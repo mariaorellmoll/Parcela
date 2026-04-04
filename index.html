@@ -1,0 +1,1496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parcela — Property Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" crossorigin="anonymous"></script>
+<style>
+:root {
+  --green:      #1e5c3a;
+  --green-mid:  #2d7a50;
+  --green-light:#eaf4ee;
+  --green-pale: #f4faf6;
+  --ink:        #0f1f16;
+  --ink-soft:   #2c3e32;
+  --ink-muted:  #556b5d;
+  --ink-faint:  #8fa898;
+  --paper:      #ffffff;
+  --paper-warm: #f8faf8;
+  --border:     rgba(30,92,58,0.12);
+  --border-mid: rgba(30,92,58,0.25);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);overflow-x:hidden;}
+
+/* ── NAV ── */
+nav{position:sticky;top:0;z-index:200;background:rgba(255,255,255,0.97);border-bottom:0.5px solid var(--border);backdrop-filter:blur(8px);padding:0 3rem;display:flex;align-items:center;justify-content:space-between;height:64px;}
+.logo{display:flex;align-items:center;gap:12px;text-decoration:none;cursor:pointer;}
+.logo-text .wordmark{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--ink);letter-spacing:0.01em;line-height:1;}
+.logo-text .tagline{font-family:'DM Mono',monospace;font-size:7px;letter-spacing:2.5px;text-transform:uppercase;color:var(--green);margin-top:3px;}
+.nav-right{display:flex;align-items:center;gap:1.5rem;}
+.audience-toggle{display:flex;align-items:center;background:var(--paper-warm);border:0.5px solid var(--border);border-radius:4px;overflow:hidden;}
+.aud-btn{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:7px 14px;border:none;background:transparent;color:var(--ink-muted);cursor:pointer;transition:all 0.2s;}
+.aud-btn.active{background:var(--green);color:#fff;}
+.lang-switcher{display:flex;align-items:center;gap:4px;}
+.lang-btn{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;padding:5px 8px;border:0.5px solid transparent;background:transparent;color:var(--ink-faint);cursor:pointer;transition:all 0.2s;border-radius:3px;}
+.lang-btn.active{border-color:var(--border-mid);color:var(--green);}
+.lang-btn:hover{color:var(--ink);}
+.nav-cta{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:9px 18px;background:var(--green);color:#fff;border:none;cursor:pointer;transition:background 0.2s;border-radius:2px;}
+.nav-cta:hover{background:var(--green-mid);}
+
+/* ── SECTIONS ── */
+.individual-view,.agency-view{display:none;}
+.individual-view.active,.agency-view.active{display:block;}
+
+/* ── HERO ── */
+.hero{padding:6rem 3rem 4rem;max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:5rem;align-items:center;}
+.hero-eyebrow{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--green);margin-bottom:1.25rem;opacity:0;animation:fadeUp 0.7s 0.1s forwards;}
+.hero-title{font-family:'Cormorant Garamond',serif;font-size:clamp(40px,4.5vw,62px);font-weight:500;line-height:1.05;letter-spacing:-0.02em;color:var(--ink);margin-bottom:1.25rem;opacity:0;animation:fadeUp 0.7s 0.25s forwards;}
+.hero-title em{font-style:italic;color:var(--green);}
+.hero-body{font-size:14px;font-weight:300;color:var(--ink-muted);line-height:1.8;margin-bottom:2rem;opacity:0;animation:fadeUp 0.7s 0.4s forwards;}
+.hero-stats{display:flex;gap:2rem;opacity:0;animation:fadeUp 0.7s 0.5s forwards;}
+.stat-item{display:flex;flex-direction:column;gap:2px;}
+.stat-num{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;color:var(--green);}
+.stat-label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-faint);}
+.why-card{border:0.5px solid var(--border);padding:2rem;background:var(--paper-warm);opacity:0;animation:fadeUp 0.7s 0.4s forwards;}
+.why-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:500;color:var(--ink);margin-bottom:1rem;}
+.why-list{list-style:none;display:flex;flex-direction:column;gap:0.85rem;}
+.why-list li{font-size:12px;color:var(--ink-soft);line-height:1.65;display:flex;align-items:flex-start;gap:10px;}
+.why-check{width:16px;height:16px;border-radius:50%;background:var(--green-light);border:0.5px solid var(--border-mid);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.why-check svg{width:8px;height:8px;}
+.divider{height:0.5px;background:var(--border);margin:0 3rem;}
+
+/* ── SEARCH ── */
+.search-section{padding:4rem 3rem;max-width:1100px;margin:0 auto;}
+.section-eyebrow{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--green);margin-bottom:0.6rem;}
+.section-title{font-family:'Cormorant Garamond',serif;font-size:clamp(26px,3vw,38px);font-weight:500;color:var(--ink);margin-bottom:0.5rem;line-height:1.1;}
+.section-sub{font-size:13px;color:var(--ink-muted);margin-bottom:2rem;line-height:1.7;max-width:480px;}
+.search-wrap{display:flex;max-width:540px;border:1px solid var(--border-mid);transition:border-color 0.2s;}
+.search-wrap:focus-within{border-color:var(--green);}
+.search-input{flex:1;border:none;outline:none;padding:13px 16px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--ink);background:transparent;}
+.search-input::placeholder{color:var(--ink-faint);}
+.search-btn{background:var(--green);border:none;color:#fff;padding:13px 20px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:background 0.2s;white-space:nowrap;}
+.search-btn:hover{background:var(--green-mid);}
+.search-btn:disabled{opacity:0.5;cursor:not-allowed;}
+.search-hint{margin-top:0.5rem;font-family:'DM Mono',monospace;font-size:9px;color:var(--ink-faint);letter-spacing:0.5px;}
+
+/* ── AREA CONFIRM ── */
+#area-confirm{display:none;margin-top:1.5rem;max-width:540px;}
+.area-confirm-card{border:0.5px solid var(--border-mid);background:var(--green-pale);padding:1.25rem 1.5rem;display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;}
+.area-confirm-left{}
+.area-confirm-label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:4px;}
+.area-confirm-name{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500;color:var(--ink);line-height:1.2;}
+.area-confirm-sub{font-size:11px;color:var(--ink-muted);margin-top:3px;}
+.area-confirm-actions{display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;margin-top:0.75rem;width:100%;}
+.area-confirm-note{font-size:11px;color:var(--ink-faint);}
+
+/* ── REGION SELECTOR ── */
+.region-section{padding:0 3rem 4rem;max-width:1100px;margin:0 auto;}
+.region-select-wrap{max-width:540px;margin-top:1rem;}
+.region-select{width:100%;border:1px solid var(--border-mid);outline:none;padding:13px 16px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--ink);background:var(--paper);cursor:pointer;transition:border-color 0.2s;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238fa898' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;}
+.region-select:focus{border-color:var(--green);}
+.btn-primary{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:11px 20px;background:var(--green);color:#fff;border:none;cursor:pointer;transition:background 0.2s;border-radius:2px;}
+.btn-primary:hover{background:var(--green-mid);}
+.btn-outline{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:11px 20px;background:transparent;color:var(--green);border:1px solid var(--green);cursor:pointer;transition:all 0.2s;border-radius:2px;}
+.btn-outline:hover{background:var(--green-light);}
+
+/* ── PRODUCTS ── */
+.products-section{padding:4rem 3rem;background:var(--paper-warm);}
+.products-inner{max-width:1100px;margin:0 auto;}
+.products-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.25rem;margin-top:2.5rem;}
+.product-card{background:var(--paper);border:0.5px solid var(--border);padding:2rem;position:relative;transition:border-color 0.2s;}
+.product-card:hover{border-color:var(--border-mid);}
+.product-card.featured{border-color:var(--green);border-width:1.5px;}
+.featured-label{position:absolute;top:-11px;left:1.5rem;background:var(--green);color:#fff;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;padding:3px 10px;}
+.product-type{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:0.6rem;}
+.product-name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--ink);margin-bottom:0.4rem;line-height:1.15;}
+.product-desc{font-size:12px;color:var(--ink-muted);line-height:1.7;margin-bottom:1.25rem;}
+.product-includes{list-style:none;margin-bottom:1.5rem;display:flex;flex-direction:column;gap:0.5rem;}
+.product-includes li{font-size:11px;color:var(--ink-soft);display:flex;align-items:flex-start;gap:8px;line-height:1.5;}
+.check-mark{width:13px;height:13px;border-radius:50%;background:var(--green-light);border:0.5px solid var(--border-mid);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.check-mark svg{width:6px;height:6px;}
+.product-footer{display:flex;align-items:center;justify-content:space-between;padding-top:1.25rem;border-top:0.5px solid var(--border);}
+.product-price{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:600;color:var(--ink);}
+.product-price-sub{font-family:'DM Mono',monospace;font-size:9px;color:var(--ink-faint);letter-spacing:0.5px;margin-top:2px;}
+
+/* ── CATASTRO SECTION ── */
+.catastro-section{padding:4rem 3rem;max-width:1100px;margin:0 auto;}
+.catastro-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-top:2.5rem;}
+.catastro-card{border:0.5px solid var(--border);padding:2rem;background:var(--paper);position:relative;}
+.catastro-card.coming-soon{opacity:0.7;}
+.coming-badge{position:absolute;top:-11px;right:1.5rem;background:var(--ink-faint);color:#fff;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;padding:3px 10px;}
+.new-badge{position:absolute;top:-11px;right:1.5rem;background:var(--green);color:#fff;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;padding:3px 10px;}
+.catastro-icon{width:40px;height:40px;background:var(--green-light);border:0.5px solid var(--border-mid);border-radius:4px;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;}
+.catastro-name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--ink);margin-bottom:0.4rem;}
+.catastro-desc{font-size:12px;color:var(--ink-muted);line-height:1.7;margin-bottom:1.25rem;}
+.catastro-items{list-style:none;display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1.5rem;}
+.catastro-items li{font-size:11px;color:var(--ink-soft);display:flex;align-items:flex-start;gap:8px;line-height:1.5;}
+.catastro-footer{display:flex;align-items:center;justify-content:space-between;padding-top:1.25rem;border-top:0.5px solid var(--border);}
+.catastro-price{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;color:var(--ink);}
+.catastro-price-sub{font-family:'DM Mono',monospace;font-size:9px;color:var(--ink-faint);letter-spacing:0.5px;margin-top:2px;}
+
+/* ── HOW ── */
+.how-section{padding:4rem 3rem;max-width:1100px;margin:0 auto;}
+.how-grid{display:grid;grid-template-columns:repeat(4,1fr);border:0.5px solid var(--border);margin-top:2.5rem;}
+.how-step{padding:1.75rem 1.5rem;border-right:0.5px solid var(--border);}
+.how-step:last-child{border-right:none;}
+.how-num{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--green);margin-bottom:0.75rem;}
+.how-title{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:500;color:var(--ink);margin-bottom:0.5rem;}
+.how-desc{font-size:11px;color:var(--ink-muted);line-height:1.7;}
+
+/* ── DATA SECTION ── */
+.data-section{padding:4rem 3rem;background:var(--green);}
+.data-inner{max-width:1100px;margin:0 auto;}
+.data-section .section-eyebrow{color:rgba(255,255,255,0.45);}
+.data-section .section-title{color:#fff;}
+.data-section .section-sub{color:rgba(255,255,255,0.55);}
+.data-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(255,255,255,0.1);margin-top:2.5rem;}
+.data-item{background:var(--green);padding:1.25rem 1.5rem;}
+.data-name{font-size:12px;font-weight:500;color:#fff;margin-bottom:3px;}
+.data-meta{font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,0.35);letter-spacing:0.5px;}
+
+/* ── AGENCY ── */
+.agency-hero{padding:6rem 3rem 5rem;max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:5rem;align-items:center;}
+.agency-contact-card{border:0.5px solid var(--border);padding:2.5rem;background:var(--paper-warm);}
+.agency-contact-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:500;color:var(--ink);margin-bottom:0.5rem;}
+.agency-contact-sub{font-size:12px;color:var(--ink-muted);margin-bottom:1.5rem;line-height:1.7;}
+.form-label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--ink-muted);display:block;margin-bottom:4px;margin-top:0.85rem;}
+.form-label:first-of-type{margin-top:0;}
+.form-input{width:100%;border:0.5px solid var(--border-mid);outline:none;padding:10px 12px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);transition:border-color 0.2s;background:var(--paper);}
+.form-input:focus{border-color:var(--green);}
+.form-select{width:100%;border:0.5px solid var(--border-mid);outline:none;padding:10px 12px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);background:var(--paper);cursor:pointer;}
+.form-textarea{width:100%;border:0.5px solid var(--border-mid);outline:none;padding:10px 12px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);resize:vertical;min-height:80px;transition:border-color 0.2s;background:var(--paper);}
+.form-textarea:focus{border-color:var(--green);}
+.submit-btn{width:100%;background:var(--green);color:#fff;border:none;padding:12px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;margin-top:1.25rem;transition:background 0.2s;}
+.submit-btn:hover{background:var(--green-mid);}
+.agency-features{display:flex;flex-direction:column;gap:1.25rem;}
+.agency-feature{border-left:2px solid var(--green-light);padding-left:1rem;}
+.agency-feature-title{font-size:13px;font-weight:500;color:var(--ink);margin-bottom:3px;}
+.agency-feature-desc{font-size:12px;color:var(--ink-muted);line-height:1.6;}
+.agency-social-proof{background:var(--green-pale);border:0.5px solid var(--border);padding:1.5rem;margin-top:2rem;}
+.proof-label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--ink-faint);margin-bottom:0.75rem;}
+.proof-stats{display:flex;gap:2rem;}
+
+/* ── FOOTER ── */
+footer{border-top:0.5px solid var(--border);padding:2rem 3rem;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1.5rem;}
+.footer-logo-wrap{display:flex;align-items:center;gap:10px;}
+.footer-legal{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.3px;color:var(--ink-faint);line-height:1.7;max-width:560px;}
+.footer-legal b{color:var(--ink-soft);}
+
+/* ── MODAL ── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(15,31,22,0.55);z-index:500;align-items:center;justify-content:center;padding:2rem;}
+.modal-bg.open{display:flex;}
+.modal{background:#fff;border:0.5px solid var(--border);padding:2.5rem;max-width:440px;width:100%;position:relative;max-height:90vh;overflow-y:auto;}
+.modal-close{position:absolute;top:1rem;right:1rem;background:none;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:9px;color:var(--ink-faint);letter-spacing:1px;}
+.modal-close:hover{color:var(--ink);}
+.modal-type{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:0.4rem;}
+.modal-title{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;color:var(--ink);margin-bottom:0.4rem;}
+.modal-desc{font-size:12px;color:var(--ink-muted);line-height:1.65;margin-bottom:1.5rem;}
+.pay-error{color:#c0392b;font-size:11px;font-family:'DM Mono',monospace;margin-bottom:0.75rem;display:none;}
+.modal-price-display{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:600;color:var(--green);margin-bottom:1.25rem;line-height:1;}
+.modal-price-original{font-size:16px;color:var(--ink-faint);text-decoration:line-through;margin-right:8px;}
+.discount-row{display:flex;gap:8px;margin-bottom:1rem;}
+.discount-input{flex:1;border:0.5px solid var(--border-mid);outline:none;padding:9px 12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--ink);letter-spacing:0.5px;background:var(--paper);}
+.discount-input:focus{border-color:var(--green);}
+.discount-btn{background:var(--paper-warm);border:0.5px solid var(--border-mid);padding:9px 14px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-muted);cursor:pointer;white-space:nowrap;transition:all 0.2s;}
+.discount-btn:hover{border-color:var(--green);color:var(--green);}
+.discount-msg{font-family:'DM Mono',monospace;font-size:9px;margin-bottom:0.75rem;letter-spacing:0.5px;}
+.discount-msg.success{color:var(--green);}
+.discount-msg.error{color:#c0392b;}
+.pay-btn{width:100%;background:var(--green);color:#fff;border:none;padding:12px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:background 0.2s;}
+.pay-btn:hover{background:var(--green-mid);}
+.pay-btn:disabled{opacity:0.5;cursor:not-allowed;}
+.payment-note{font-family:'DM Mono',monospace;font-size:8px;color:var(--ink-faint);text-align:center;margin-top:0.6rem;letter-spacing:0.3px;}
+.success-bg{display:none;position:fixed;inset:0;background:rgba(15,31,22,0.55);z-index:500;align-items:center;justify-content:center;padding:2rem;}
+.success-bg.open{display:flex;}
+.success-card{background:#fff;border:0.5px solid var(--border);padding:2.5rem;max-width:380px;width:100%;text-align:center;}
+.success-icon{width:44px;height:44px;border-radius:50%;background:var(--green-light);border:0.5px solid var(--border-mid);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;}
+.success-title{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:500;color:var(--ink);margin-bottom:0.4rem;}
+.success-sub{font-size:12px;color:var(--ink-muted);line-height:1.7;}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+@keyframes dot{0%,80%,100%{transform:scale(0.6);opacity:0.3;}40%{transform:scale(1);opacity:1;}}
+.loading-dots span{display:inline-block;width:3px;height:3px;background:currentColor;border-radius:50%;margin:0 2px;animation:dot 1.2s infinite;}
+.loading-dots span:nth-child(2){animation-delay:0.2s;}
+.loading-dots span:nth-child(3){animation-delay:0.4s;}
+
+@media(max-width:860px){
+  nav{padding:0 1.25rem;}
+  .nav-right{gap:0.75rem;}
+  .lang-switcher{display:none;}
+  .hero,.agency-hero{grid-template-columns:1fr;padding:4rem 1.25rem 2.5rem;gap:2.5rem;}
+  .search-section,.how-section,.catastro-section{padding-left:1.25rem;padding-right:1.25rem;}
+  .products-section{padding:3rem 1.25rem;}
+  .products-grid{grid-template-columns:1fr;}
+  .catastro-grid{grid-template-columns:1fr;}
+  .how-grid{grid-template-columns:1fr 1fr;}
+  .how-step{border-bottom:0.5px solid var(--border);}
+  .data-grid{grid-template-columns:1fr 1fr;}
+  .divider{margin:0 1.25rem;}
+  footer{padding:1.5rem 1.25rem;flex-direction:column;}
+}
+</style>
+</head>
+<body>
+
+<!-- PASSWORD GATE -->
+<div id="password-gate" style="display:none;position:fixed;inset:0;background:#fff;z-index:9999;display:flex;align-items:center;justify-content:center;padding:2rem;">
+  <div style="max-width:360px;width:100%;text-align:center;">
+    <svg width="40" height="40" viewBox="0 0 36 36" fill="none" style="margin:0 auto 1.5rem;">
+      <rect x="1" y="1" width="34" height="34" rx="5" stroke="#1e5c3a" stroke-width="1.2" fill="rgba(30,92,58,0.04)"/>
+      <path d="M18 7L18 29M7 18L29 18" stroke="#1e5c3a" stroke-width="0.9" stroke-linecap="round"/>
+      <circle cx="18" cy="18" r="5" fill="none" stroke="#1e5c3a" stroke-width="0.9"/>
+      <circle cx="18" cy="18" r="2" fill="#1e5c3a"/>
+    </svg>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:600;color:#0f1f16;margin-bottom:4px;">Parcela</div>
+    <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:#1e5c3a;margin-bottom:2rem;">Private preview</div>
+    <input id="gate-input" type="password" placeholder="Enter access code"
+      style="width:100%;border:0.5px solid rgba(30,92,58,0.25);outline:none;padding:12px 16px;font-family:'DM Sans',sans-serif;font-size:14px;color:#0f1f16;margin-bottom:0.75rem;text-align:center;letter-spacing:2px;"
+      onkeydown="if(event.key==='Enter') checkPassword()">
+    <div id="gate-error" style="display:none;font-family:'DM Mono',monospace;font-size:9px;color:#c0392b;margin-bottom:0.75rem;letter-spacing:0.5px;">Incorrect code — try again</div>
+    <button onclick="checkPassword()"
+      style="width:100%;background:#1e5c3a;color:#fff;border:none;padding:12px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;">
+      Enter →
+    </button>
+  </div>
+</div>
+
+<script>
+(function() {
+  var PASS = 'parcela2026';
+  var KEY = 'parcela_auth';
+  function checkPassword() {
+    var val = document.getElementById('gate-input').value;
+    if (val === PASS) {
+      sessionStorage.setItem(KEY, '1');
+      document.getElementById('password-gate').style.display = 'none';
+      document.getElementById('gate-error').style.display = 'none';
+    } else {
+      document.getElementById('gate-error').style.display = 'block';
+      document.getElementById('gate-input').value = '';
+    }
+  }
+  window.checkPassword = checkPassword;
+  // Check on load
+  if (sessionStorage.getItem(KEY) !== '1') {
+    document.getElementById('password-gate').style.display = 'flex';
+  }
+})();
+</script>
+
+<!-- NAV -->
+<nav>
+  <a class="logo" onclick="goHome()">
+    <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
+      <rect x="1" y="1" width="34" height="34" rx="5" stroke="#1e5c3a" stroke-width="1.2" fill="rgba(30,92,58,0.04)"/>
+      <path d="M18 7L18 29M7 18L29 18" stroke="#1e5c3a" stroke-width="0.9" stroke-linecap="round"/>
+      <circle cx="18" cy="18" r="5" fill="none" stroke="#1e5c3a" stroke-width="0.9"/>
+      <circle cx="18" cy="18" r="2" fill="#1e5c3a"/>
+    </svg>
+    <div class="logo-text">
+      <div class="wordmark">Parcela</div>
+      <div class="tagline" id="nav-tagline">Property intelligence</div>
+    </div>
+  </a>
+  <div class="nav-right">
+    <div class="audience-toggle">
+      <button class="aud-btn active" id="btn-individual" onclick="setAudience('individual')">
+        <span data-t="individual">Individual</span>
+      </button>
+      <button class="aud-btn" id="btn-agency" onclick="setAudience('agency')">
+        <span data-t="agency">Agency</span>
+      </button>
+    </div>
+    <div class="lang-switcher">
+      <button class="lang-btn active" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" onclick="setLang('es')">ES</button>
+      <button class="lang-btn" onclick="setLang('de')">DE</button>
+      <button class="lang-btn" onclick="setLang('fr')">FR</button>
+    </div>
+    <button class="nav-cta" id="nav-cta-btn" onclick="document.getElementById('search').scrollIntoView({behavior:'smooth'})">
+      <span data-t="getReport">Get a report</span>
+    </button>
+  </div>
+</nav>
+
+<!-- INDIVIDUAL VIEW -->
+<div class="individual-view active" id="view-individual">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div>
+      <div class="hero-eyebrow" data-t="heroEyebrow">Spain property intelligence</div>
+      <h1 class="hero-title" data-t="heroTitle">Know if a neighbourhood is <em>rising</em> before you buy.</h1>
+      <p class="hero-body" data-t="heroBody">Agents show you today's price. Parcela shows you where the neighbourhood is heading — using a proprietary signal index updated daily, synthesised into a professional intelligence report.</p>
+      <div class="hero-stats">
+        <div class="stat-item"><div class="stat-num">8+</div><div class="stat-label" data-t="statSignals">Data signals</div></div>
+        <div class="stat-item"><div class="stat-num">60s</div><div class="stat-label" data-t="statDelivery">Report delivery</div></div>
+        <div class="stat-item"><div class="stat-num">Daily</div><div class="stat-label" data-t="statRefresh">Data refresh</div></div>
+      </div>
+    </div>
+    <div class="why-card">
+      <div class="why-title" data-t="whyTitle">Why buyers use Parcela</div>
+      <ul class="why-list">
+        <li><div class="why-check"><svg viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3.5 6L6.5 2" stroke="#1e5c3a" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><span data-t="why1">Agents only show lagging data. Parcela reads the signals before they show up in prices.</span></li>
+        <li><div class="why-check"><svg viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3.5 6L6.5 2" stroke="#1e5c3a" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><span data-t="why2">Foreign buyers have zero visibility on the planning, regulatory, and investment signals that matter most.</span></li>
+        <li><div class="why-check"><svg viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3.5 6L6.5 2" stroke="#1e5c3a" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><span data-t="why3">A €79 report on a €500,000 decision. The cost of buying in the wrong neighbourhood is measured in six figures.</span></li>
+        <li><div class="why-check"><svg viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3.5 6L6.5 2" stroke="#1e5c3a" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><span data-t="why4">All intelligence is derived from verified institutional data sources — not surveys or agent opinions.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- SEARCH -->
+  <section class="search-section" id="search">
+    <div class="section-eyebrow" data-t="searchEyebrow">Start here</div>
+    <h2 class="section-title" data-t="searchTitle">Search any area in Spain</h2>
+    <p class="section-sub" data-t="searchSub">Enter a postcode or neighbourhood name and we'll confirm the area before you choose your report.</p>
+    <div class="search-wrap">
+      <input class="search-input" id="search-input" type="text" autocomplete="off" placeholder="e.g. 07001 · Santa Catalina · Gràcia · Salamanca">
+      <button class="search-btn" id="search-btn" onclick="doSearch()"><span data-t="searchBtn">Search →</span></button>
+    </div>
+    <div class="search-hint" data-t="searchHint">Try: 07001 · Santa Catalina · Sóller · Gràcia · Salamanca</div>
+
+    <div id="area-confirm">
+      <div class="area-confirm-card">
+        <div class="area-confirm-left">
+          <div class="area-confirm-label" data-t="areaIdentified">Area identified</div>
+          <div class="area-confirm-name" id="area-confirm-name"></div>
+          <div class="area-confirm-sub" id="area-confirm-sub"></div>
+        </div>
+      </div>
+      <div class="area-confirm-actions">
+        <button class="btn-primary" onclick="openModal('neighbourhood')" id="cta-neighbourhood">Neighbourhood — €79</button>
+        <button class="btn-outline" onclick="openModal('spain')" id="cta-spain">Spain Atlas — €299</button>
+        <div class="area-confirm-note" data-t="deliveryNote">Delivered to your inbox in 60 seconds</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- REGION SELECTOR -->
+  <section class="region-section" id="region-section">
+    <div class="section-eyebrow" data-t="regionEyebrow">Region report</div>
+    <h2 class="section-title" data-t="regionTitle">Select a Comunidad Autónoma</h2>
+    <p class="section-sub" data-t="regionSub">Choose the region you want full intelligence on — all neighbourhoods ranked, rising zones identified, risks flagged.</p>
+    <div class="region-select-wrap">
+      <select class="region-select" id="region-select" onchange="onRegionSelect(this.value)">
+        <option value="">— Select region —</option>
+        <option value="Andalucía">Andalucía</option>
+        <option value="Aragón">Aragón</option>
+        <option value="Asturias">Asturias</option>
+        <option value="Islas Baleares">Islas Baleares</option>
+        <option value="Canarias">Canarias</option>
+        <option value="Cantabria">Cantabria</option>
+        <option value="Castilla-La Mancha">Castilla-La Mancha</option>
+        <option value="Castilla y León">Castilla y León</option>
+        <option value="Cataluña">Cataluña</option>
+        <option value="Comunidad Valenciana">Comunidad Valenciana</option>
+        <option value="Extremadura">Extremadura</option>
+        <option value="Galicia">Galicia</option>
+        <option value="La Rioja">La Rioja</option>
+        <option value="Comunidad de Madrid">Comunidad de Madrid</option>
+        <option value="Murcia">Murcia</option>
+        <option value="Navarra">Navarra</option>
+        <option value="País Vasco">País Vasco</option>
+      </select>
+    </div>
+    <div id="region-confirm" style="display:none;margin-top:1rem;">
+      <div class="area-confirm-card">
+        <div class="area-confirm-left">
+          <div class="area-confirm-label" data-t="regionSelected">Region selected</div>
+          <div class="area-confirm-name" id="region-confirm-name"></div>
+          <div class="area-confirm-sub" data-t="regionConfirmSub">Full region intelligence — all neighbourhoods ranked</div>
+        </div>
+      </div>
+      <div class="area-confirm-actions" style="margin-top:0.75rem;">
+        <button class="btn-primary" onclick="openModal('region')" id="cta-region">Region Report — €199</button>
+        <div class="area-confirm-note" data-t="deliveryNote">Delivered to your inbox in 60 seconds</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- PRODUCTS -->
+  <section class="products-section" id="products">
+    <div class="products-inner">
+      <div class="section-eyebrow" data-t="reportsEyebrow">Intelligence reports</div>
+      <h2 class="section-title" data-t="reportsTitle">Three reports. One decision.</h2>
+      <p class="section-sub" data-t="reportsSub">From a single street to all of Spain — choose the level of intelligence you need.</p>
+      <div class="products-grid">
+
+        <div class="product-card">
+          <div class="product-type" data-t="p1type">Single area</div>
+          <div class="product-name" data-t="p1name">Neighbourhood Report</div>
+          <div class="product-desc" data-t="p1desc">A comprehensive intelligence brief on one specific postcode or neighbourhood. Everything you need to know about where that area is heading over the next five years.</div>
+          <ul class="product-includes" id="p1-includes"></ul>
+          <div class="product-footer">
+            <div>
+              <div class="product-price">€79</div>
+              <div class="product-price-sub" data-t="oneTime">One-time · Single area</div>
+            </div>
+            <button class="btn-outline" onclick="openModal('neighbourhood')" data-t="getReport">Get report</button>
+          </div>
+        </div>
+
+        <div class="product-card featured">
+          <div class="featured-label" data-t="mostPopular">Most popular</div>
+          <div class="product-type" data-t="p2type">Region-wide</div>
+          <div class="product-name" data-t="p2name">Region Intelligence Report</div>
+          <div class="product-desc" data-t="p2desc">Full intelligence across an entire region — Mallorca, Madrid, Barcelona, Costa del Sol and more. Ranked neighbourhoods, rising zones, areas to avoid, comparative matrix.</div>
+          <ul class="product-includes" id="p2-includes"></ul>
+          <div class="product-footer">
+            <div>
+              <div class="product-price">€199</div>
+              <div class="product-price-sub" data-t="oneTimeRegion">One-time · Full region</div>
+            </div>
+            <button class="btn-primary" onclick="openModal('region')" data-t="getRegion">Get report</button>
+          </div>
+        </div>
+
+        <div class="product-card">
+          <div class="product-type" data-t="p3type">Spain-wide</div>
+          <div class="product-name" data-t="p3name">Spain Intelligence Atlas</div>
+          <div class="product-desc" data-t="p3desc">The complete picture of the Spanish property market. All regions ranked, top 10 rising areas, top 5 to avoid, full regulatory and climate risk overview. 20+ pages.</div>
+          <ul class="product-includes" id="p3-includes"></ul>
+          <div class="product-footer">
+            <div>
+              <div class="product-price">€299</div>
+              <div class="product-price-sub" data-t="oneTimeSpain">One-time · Full Spain</div>
+            </div>
+            <button class="btn-outline" onclick="openModal('spain')" data-t="getAtlas">Get Atlas</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- CATASTRO SECTION -->
+  <section class="catastro-section" id="catastro">
+    <div class="section-eyebrow" data-t="catastroEyebrow">Property due diligence</div>
+    <h2 class="section-title" data-t="catastroTitle">Know the property. Not just the neighbourhood.</h2>
+    <p class="section-sub" data-t="catastroSub">Parcela's neighbourhood reports tell you where to buy. Our Catastro intelligence products tell you whether the specific property is what it appears to be.</p>
+    <div class="catastro-grid">
+
+      <div class="catastro-card">
+        <div class="new-badge" data-t="newBadge">New</div>
+        <div class="catastro-icon">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="3" width="14" height="14" rx="1" stroke="#1e5c3a" stroke-width="1.2"/><path d="M3 8h14M8 8v9" stroke="#1e5c3a" stroke-width="1.2"/></svg>
+        </div>
+        <div class="catastro-name" data-t="cat1name">Property Dossier</div>
+        <div class="catastro-desc" data-t="cat1desc">The full Catastro record on any specific property. Official built surface, legal registration status, cadastral value versus asking price — straight from the Spanish land registry.</div>
+        <ul class="catastro-items" id="cat1-items"></ul>
+        <div class="catastro-footer">
+          <div>
+            <div class="catastro-price">€49</div>
+            <div class="catastro-price-sub" data-t="perProperty">One-time · Per property</div>
+          </div>
+          <button class="btn-outline" onclick="openModal('dossier')" data-t="getDossier">Get dossier</button>
+        </div>
+      </div>
+
+      <div class="catastro-card">
+        <div class="new-badge" data-t="newBadge">New</div>
+        <div class="catastro-icon">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 16l4-4 3 3 5-7" stroke="#1e5c3a" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="15" cy="5" r="2" stroke="#1e5c3a" stroke-width="1.2"/></svg>
+        </div>
+        <div class="catastro-name" data-t="cat2name">Negotiation Intelligence</div>
+        <div class="catastro-desc" data-t="cat2desc">Before you make an offer. Days on market, price history, owner type, comparable sold prices nearby — and an AI-generated negotiation brief tailored to this specific property.</div>
+        <ul class="catastro-items" id="cat2-items"></ul>
+        <div class="catastro-footer">
+          <div>
+            <div class="catastro-price">€69</div>
+            <div class="catastro-price-sub" data-t="perProperty">One-time · Per property</div>
+          </div>
+          <button class="btn-outline" onclick="openModal('negotiation')" data-t="getNegotiation">Get report</button>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how-section" id="how">
+    <div class="section-eyebrow" data-t="howEyebrow">Methodology</div>
+    <h2 class="section-title" data-t="howTitle">How Parcela works</h2>
+    <div class="how-grid">
+      <div class="how-step">
+        <div class="how-num" data-t="howNum1">01 · Daily</div>
+        <div class="how-title" data-t="howStep1Title">Signal ingestion</div>
+        <div class="how-desc" data-t="howStep1Desc">Our proprietary data infrastructure continuously processes multiple institutional data streams across all tracked regions. Signals refresh daily.</div>
+      </div>
+      <div class="how-step">
+        <div class="how-num" data-t="howNum2">02 · Weighted</div>
+        <div class="how-title" data-t="howStep2Title">Intelligence scoring</div>
+        <div class="how-desc" data-t="howStep2Desc">Each signal is weighted by its historical predictive power. Leading indicators carry greater weight than lagging ones. The model is continuously calibrated.</div>
+      </div>
+      <div class="how-step">
+        <div class="how-num" data-t="howNum3">03 · Automated</div>
+        <div class="how-title" data-t="howStep3Title">Synthesis</div>
+        <div class="how-desc" data-t="howStep3Desc">Processed signals are synthesised by AI into a plain-English intelligence brief — written with the precision of a private bank research note.</div>
+      </div>
+      <div class="how-step">
+        <div class="how-num" data-t="howNum4">04 · 60 seconds</div>
+        <div class="how-title" data-t="howStep4Title">Report delivery</div>
+        <div class="how-desc" data-t="howStep4Desc">A professional branded PDF — timestamped, legally disclaimed, and delivered to your inbox in under a minute. In English, Spanish, German, or French.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DATA -->
+  <section class="data-section">
+    <div class="data-inner">
+      <div class="section-eyebrow" data-t="dataEyebrow">Data infrastructure</div>
+      <h2 class="section-title" data-t="dataTitle">Institutional data. Proprietary intelligence.</h2>
+      <p class="section-sub" data-t="dataSub">Parcela aggregates and weights signals from verified institutional sources across Spain. Our methodology is proprietary — what we can tell you is that every input is official, public, and updated on a rolling basis.</p>
+      <div class="data-grid">
+        <div class="data-item"><div class="data-name" data-t="d1name">Regulatory & licensing data</div><div class="data-meta" data-t="d1meta">Official government registries · Rolling daily</div></div>
+        <div class="data-item"><div class="data-name" data-t="d2name">Urban planning signals</div><div class="data-meta" data-t="d2meta">Municipal planning portals · Weekly</div></div>
+        <div class="data-item"><div class="data-name" data-t="d3name">Property transaction index</div><div class="data-meta" data-t="d3meta">Official land registries & portals · Daily</div></div>
+        <div class="data-item"><div class="data-name" data-t="d4name">Commercial activity indicators</div><div class="data-meta" data-t="d4meta">Business registration databases · Daily</div></div>
+        <div class="data-item"><div class="data-name" data-t="d5name">Public investment pipeline</div><div class="data-meta" data-t="d5meta">Government official bulletins · Weekly</div></div>
+        <div class="data-item"><div class="data-name" data-t="d6name">Catastro property records</div><div class="data-meta" data-t="d6meta">Spanish land registry · Per property</div></div>
+        <div class="data-item"><div class="data-name" data-t="d7name">Economic vitality indicators</div><div class="data-meta" data-t="d7meta">Commercial activity tracking · Weekly</div></div>
+        <div class="data-item"><div class="data-name" data-t="d8name">Environmental risk factors</div><div class="data-meta" data-t="d8meta">Official risk mapping · Annual update</div></div>
+      </div>
+    </div>
+  </section>
+
+</div><!-- end individual-view -->
+
+<!-- AGENCY VIEW -->
+<div class="agency-view" id="view-agency">
+  <section class="agency-hero">
+    <div>
+      <div class="hero-eyebrow" data-t="agencyEyebrow">For real estate professionals</div>
+      <h1 class="hero-title" data-t="agencyTitle">Give your buyers intelligence <em>no other agent</em> can offer.</h1>
+      <p class="hero-body" data-t="agencyBody">Parcela Pro lets you deliver branded property intelligence reports to your clients — with your logo, your name, and your contact details on the cover. Powered invisibly by Parcela.</p>
+      <div class="agency-features" style="margin-top:2rem;">
+        <div class="agency-feature">
+          <div class="agency-feature-title" data-t="af1title">Fully white-labelled reports</div>
+          <div class="agency-feature-desc" data-t="af1desc">Full custom cover page — your agency logo, agent photo, bio, contact details, and a personalised message to each client. A small "Powered by Parcela" badge is the only trace of us.</div>
+        </div>
+        <div class="agency-feature">
+          <div class="agency-feature-title" data-t="af2title">Ready in 60 seconds</div>
+          <div class="agency-feature-desc" data-t="af2desc">Enter the postcode, select the language, click generate. The PDF is ready before the meeting ends.</div>
+        </div>
+        <div class="agency-feature">
+          <div class="agency-feature-title" data-t="af3title">All 4 languages</div>
+          <div class="agency-feature-desc" data-t="af3desc">English, Spanish, German, and French. Essential for agencies working with international buyers across Spain.</div>
+        </div>
+        <div class="agency-feature">
+          <div class="agency-feature-title" data-t="af4title">Pricing tailored to your agency</div>
+          <div class="agency-feature-desc" data-t="af4desc">From independent agents to multi-branch networks. We discuss pricing directly — no fixed tiers, no surprises. Get in touch and we'll put together a proposal within 24 hours.</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="agency-contact-card">
+        <div class="agency-contact-title" data-t="contactTitle">Request a demo & pricing</div>
+        <div class="agency-contact-sub" data-t="contactSub">Tell us about your agency and we'll reply within 24 hours with a tailored proposal and a free sample report with your branding on it.</div>
+        <label class="form-label" data-t="labelAgency">Agency name</label>
+        <input class="form-input" id="agency-name" type="text" placeholder="e.g. Mallorca Luxury Estates">
+        <label class="form-label" data-t="labelContact">Your name & role</label>
+        <input class="form-input" id="contact-name" type="text" placeholder="e.g. Sofia Brandt, Director">
+        <label class="form-label" data-t="labelEmail">Email</label>
+        <input class="form-input" id="contact-email" type="email" placeholder="your@email.com">
+        <label class="form-label" data-t="labelSize">Agency size</label>
+        <select class="form-select" id="agency-size">
+          <option value="">Select...</option>
+          <option value="1">Independent agent (1 person)</option>
+          <option value="2-5">Small agency (2–5 agents)</option>
+          <option value="6-15">Mid-size agency (6–15 agents)</option>
+          <option value="16+">Large agency / franchise (16+ agents)</option>
+        </select>
+        <label class="form-label" data-t="labelLocations">Main locations covered</label>
+        <input class="form-input" id="agency-locations" type="text" placeholder="e.g. Mallorca, Ibiza">
+        <label class="form-label" data-t="labelMessage">Anything else?</label>
+        <textarea class="form-textarea" id="agency-message" placeholder="Volume expectations, specific regions, integration needs..."></textarea>
+        <button class="submit-btn" onclick="submitAgencyForm()">
+          <span data-t="submitContact">Send enquiry →</span>
+        </button>
+      </div>
+      <div class="agency-social-proof">
+        <div class="proof-label" data-t="proofLabel">Why agencies choose Parcela Pro</div>
+        <div class="proof-stats">
+          <div class="stat-item"><div class="stat-num" style="font-size:20px;">6-page</div><div class="stat-label" data-t="proofStat1">Branded PDF</div></div>
+          <div class="stat-item"><div class="stat-num" style="font-size:20px;">60s</div><div class="stat-label" data-t="proofStat2">Delivery</div></div>
+          <div class="stat-item"><div class="stat-num" style="font-size:20px;">4</div><div class="stat-label" data-t="proofStat3">Languages</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo-wrap">
+    <svg width="26" height="26" viewBox="0 0 36 36" fill="none">
+      <rect x="1" y="1" width="34" height="34" rx="5" stroke="#1e5c3a" stroke-width="1.2" fill="rgba(30,92,58,0.04)"/>
+      <path d="M18 7L18 29M7 18L29 18" stroke="#1e5c3a" stroke-width="0.9" stroke-linecap="round"/>
+      <circle cx="18" cy="18" r="5" fill="none" stroke="#1e5c3a" stroke-width="0.9"/>
+      <circle cx="18" cy="18" r="2" fill="#1e5c3a"/>
+    </svg>
+    <div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--ink);">Parcela</div>
+      <div style="font-family:'DM Mono',monospace;font-size:7px;letter-spacing:2px;text-transform:uppercase;color:var(--green);">Property intelligence</div>
+    </div>
+  </div>
+  <div class="footer-legal">
+    <b>Disclaimer.</b> Parcela reports are generated automatically using proprietary data intelligence systems drawing on publicly available institutional sources. Data is refreshed on a rolling basis. Reports are for informational purposes only and do not constitute financial, legal, or investment advice. Parcela accepts no liability for any decision made in reliance on its reports. © Parcela Intelligence Ltd. All rights reserved.
+  </div>
+</footer>
+
+<!-- PAYMENT MODAL -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕ close</button>
+    <div class="modal-type" id="modal-type"></div>
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-desc" id="modal-desc"></div>
+    <div class="modal-price-display" id="modal-price-display"></div>
+    <label class="form-label" data-t="labelEmail">Email</label>
+    <input class="form-input" id="email-input" type="email" placeholder="your@email.com" style="margin-bottom:1rem;">
+    <label class="form-label">Report language</label>
+    <select class="form-select" id="lang-select" style="margin-bottom:1rem;">
+      <option value="English">English</option>
+      <option value="Spanish">Español</option>
+      <option value="German">Deutsch</option>
+      <option value="French">Français</option>
+    </select>
+    <label class="form-label" data-t="discountLabel">Discount code</label>
+    <div class="discount-row">
+      <input class="discount-input" id="discount-input" type="text" placeholder="Enter code">
+      <button class="discount-btn" onclick="applyDiscount()">Apply</button>
+    </div>
+    <div class="discount-msg" id="discount-msg" style="display:none;"></div>
+    <div class="pay-error" id="pay-error"></div>
+    <!-- Card element only shown when payment needed -->
+    <div id="card-wrapper" style="display:none;">
+      <label class="form-label" data-t="labelCard">Card details</label>
+      <div id="card-element" style="border:0.5px solid var(--border-mid);padding:10px 12px;margin-bottom:1rem;"></div>
+    </div>
+    <button class="pay-btn" id="pay-btn" onclick="processPayment()">Pay →</button>
+    <div class="payment-note" id="payment-note">Secured by Stripe · Delivered in 60 seconds</div>
+  </div>
+</div>
+
+<!-- SUCCESS MODAL -->
+<div class="success-bg" id="success-modal">
+  <div class="success-card">
+    <div class="success-icon">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 9L7.5 13.5L15 5.5" stroke="#1e5c3a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="success-title" data-t="successTitle">Report on its way</div>
+    <p class="success-sub">
+      <span data-t="successSub">Your Parcela report has been generated and sent to</span>
+      <strong id="success-email"></strong>.
+      <span data-t="successSub2"> Check your inbox — arrives within 60 seconds.</span>
+    </p>
+    <button class="btn-primary" style="margin-top:1.25rem;width:100%;" onclick="document.getElementById('success-modal').classList.remove('open')" data-t="done">Done</button>
+  </div>
+</div>
+
+<!-- AGENCY SUCCESS -->
+<div class="success-bg" id="agency-success">
+  <div class="success-card">
+    <div class="success-icon">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 9L7.5 13.5L15 5.5" stroke="#1e5c3a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="success-title" data-t="agencySuccessTitle">Enquiry received</div>
+    <p class="success-sub" data-t="agencySuccessSub">We'll be in touch within 24 hours with a tailored proposal and a free branded sample report.</p>
+    <button class="btn-primary" style="margin-top:1.25rem;width:100%;" onclick="document.getElementById('agency-success').classList.remove('open')" data-t="done">Done</button>
+  </div>
+</div>
+
+
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+// ── CONFIG ──
+const STRIPE_KEY = 'pk_test_REPLACE_WITH_YOUR_STRIPE_KEY';
+const ANTHROPIC_KEY = ''; // Key is stored securely in Vercel — do not add here
+// EmailJS — sign up free at emailjs.com, create a service + template, paste IDs below
+const EMAILJS_PUBLIC_KEY  = 'Hwy3o0wvGnC-Bsb9g';
+const EMAILJS_SERVICE_ID  = 'service_9o97pvq';
+const EMAILJS_TEMPLATE_ID = 'template_5l5k1ry';
+
+// ── DISCOUNT ──
+const DISCOUNT_CODES = {
+  'parcela2026': 100 // 100% off
+};
+
+const PRICES = {
+  neighbourhood: 79,
+  region: 199,
+  spain: 299,
+  dossier: 49,
+  negotiation: 69
+};
+
+// ── TRANSLATIONS ──
+const T = {
+  en: {
+    individual:'Individual', agency:'Agency', getReport:'Get a report',
+    navTagline:'Property intelligence',
+    heroEyebrow:'Spain property intelligence',
+    heroTitle:'Know if a neighbourhood is <em>rising</em> before you buy.',
+    heroBody:"Agents show you today's price. Parcela shows you where the neighbourhood is heading — using a proprietary signal index updated daily, synthesised into a professional intelligence report.",
+    statSignals:'Data signals', statDelivery:'Report delivery', statRefresh:'Data refresh',
+    whyTitle:'Why buyers use Parcela',
+    why1:'Agents only show lagging data. Parcela reads the signals before they show up in prices.',
+    why2:'Foreign buyers have zero visibility on the planning, regulatory, and investment signals that matter most.',
+    why3:'A €79 report on a €500,000 decision. The cost of buying in the wrong neighbourhood is measured in six figures.',
+    why4:'All intelligence is derived from verified institutional data sources — not surveys or agent opinions.',
+    searchEyebrow:'Start here', searchTitle:'Search any area in Spain',
+    searchSub:"Enter a postcode or neighbourhood name and we'll confirm the area before you choose your report.",
+    searchBtn:'Search →', searchHint:'Try: 07001 · Santa Catalina · Sóller · Gràcia · Salamanca',
+    areaIdentified:'Area identified', mapConfirm:'Confirm the area, then choose your report below.',
+    regionEyebrow:'Region report', regionTitle:'Select a Comunidad Autónoma',
+    regionSub:'Choose the region you want full intelligence on — all neighbourhoods ranked, rising zones identified, risks flagged.',
+    regionSelected:'Region selected', regionConfirmSub:'Full region intelligence — all neighbourhoods ranked',
+    deliveryNote:'Delivered to your inbox in 60 seconds',
+    reportsEyebrow:'Intelligence reports', reportsTitle:'Three reports. One decision.',
+    reportsSub:'From a single street to all of Spain — choose the level of intelligence you need.',
+    p1type:'Single area', p1name:'Neighbourhood Report',
+    p1desc:'A comprehensive intelligence brief on one specific postcode or neighbourhood. Everything you need to know about where that area is heading over the next five years.',
+    p1items:['Parcela Future Score™ (0–100) with rationale','Full signal breakdown — 8+ data dimensions','5-year price trajectory outlook','Regulatory & STR risk assessment','Planning pipeline analysis','Key risks and red flags','Comparable neighbourhoods ranked','Analyst brief in your language','Branded PDF — timestamped & disclaimed'],
+    p2type:'Region-wide', p2name:'Region Intelligence Report',
+    p2desc:'Full intelligence across an entire region — Mallorca, Madrid, Barcelona, Costa del Sol and more. Ranked neighbourhoods, rising zones, areas to avoid.',
+    p2items:['Everything in the Neighbourhood Report','All neighbourhoods in the region ranked & scored','Top 5 rising zones in the region','Areas to approach with caution — with reasons','Price vs trajectory matrix for the region','International buyer concentration by zone','Infrastructure pipeline for the region','10–15 page professional PDF'],
+    mostPopular:'Most popular',
+    p3type:'Spain-wide', p3name:'Spain Intelligence Atlas',
+    p3desc:'The complete picture of the Spanish property market. All regions ranked, top 10 rising areas, top 5 to avoid, regulatory and climate risk overview.',
+    p3items:['Everything in the Region Report','Top 10 rising areas Spain-wide, ranked & scored','Top 5 areas to approach with caution','Full regional analysis — Mallorca, Madrid, Barcelona + more','Value vs trajectory matrix — all Spain','International buyer concentration by region','Regulatory risk overview across regions','Infrastructure pipeline 2025–2030','Climate & environmental risk overview','20+ page professional PDF Atlas'],
+    oneTime:'One-time · Single area', oneTimeRegion:'One-time · Full region', oneTimeSpain:'One-time · Full Spain',
+    getAtlas:'Get Atlas', getRegion:'Get report',
+    catastroEyebrow:'Property due diligence', catastroTitle:'Know the property. Not just the neighbourhood.',
+    catastroSub:"Parcela's neighbourhood reports tell you where to buy. Our Catastro intelligence products tell you whether the specific property is what it appears to be.",
+    newBadge:'New',
+    cat1name:'Property Dossier',
+    cat1desc:'The full Catastro record on any specific property. Official built surface, legal registration status, cadastral value versus asking price — straight from the Spanish land registry.',
+    cat1items:['Official Catastro reference & property ID','Registered built m² vs advertised m²','Legal registration status check','Cadastral value vs current asking price','Flood zone & environmental risk flag','Urban classification (residential / rural / protected)','PDF dossier delivered in 60 seconds'],
+    cat2name:'Negotiation Intelligence',
+    cat2desc:'Before you make an offer. Days on market, price history, owner type, comparable sold prices — and an AI-generated negotiation brief tailored to this specific property.',
+    cat2items:['Days on market & price history timeline','Owner type (private seller vs developer vs bank)','Comparable sold prices within 500m (last 12 months)','Price per m² vs neighbourhood average','Distress signals (long market time, repeated reductions)','AI negotiation brief: opening offer, leverage points, red flags','Delivered as a PDF in 60 seconds'],
+    perProperty:'One-time · Per property', getDossier:'Get dossier', getNegotiation:'Get report',
+    howEyebrow:'Methodology', howTitle:'How Parcela works',
+    howNum1:'01 · Daily', howStep1Title:'Signal ingestion', howStep1Desc:'Our proprietary data infrastructure continuously processes multiple institutional data streams across all tracked regions. Signals refresh daily.',
+    howNum2:'02 · Weighted', howStep2Title:'Intelligence scoring', howStep2Desc:'Each signal is weighted by its historical predictive power. Leading indicators carry greater weight than lagging ones. The model is continuously calibrated.',
+    howNum3:'03 · Automated', howStep3Title:'Synthesis', howStep3Desc:'Processed signals are synthesised by AI into a plain-English intelligence brief — written with the precision of a private bank research note.',
+    howNum4:'04 · 60 seconds', howStep4Title:'Report delivery', howStep4Desc:'A professional branded PDF — timestamped, legally disclaimed, delivered to your inbox in under a minute. In English, Spanish, German, or French.',
+    dataEyebrow:'Data infrastructure', dataTitle:'Institutional data. Proprietary intelligence.',
+    dataSub:"Parcela aggregates and weights signals from verified institutional sources across Spain. Our methodology is proprietary — what we can tell you is that every input is official, public, and updated on a rolling basis.",
+    d1name:'Regulatory & licensing data', d1meta:'Official government registries · Rolling daily',
+    d2name:'Urban planning signals', d2meta:'Municipal planning portals · Weekly',
+    d3name:'Property transaction index', d3meta:'Official land registries & portals · Daily',
+    d4name:'Commercial activity indicators', d4meta:'Business registration databases · Daily',
+    d5name:'Public investment pipeline', d5meta:'Government official bulletins · Weekly',
+    d6name:'Catastro property records', d6meta:'Spanish land registry · Per property',
+    d7name:'Economic vitality indicators', d7meta:'Commercial activity tracking · Weekly',
+    d8name:'Environmental risk factors', d8meta:'Official risk mapping · Annual update',
+    agencyEyebrow:'For real estate professionals',
+    agencyTitle:'Give your buyers intelligence <em>no other agent</em> can offer.',
+    agencyBody:'Parcela Pro lets you deliver branded property intelligence reports to your clients — with your logo, your name, and your contact details on the cover. Powered invisibly by Parcela.',
+    af1title:'Fully white-labelled reports', af1desc:'Full custom cover page — your agency logo, agent photo, bio, contact details, and a personalised message to each client. A small "Powered by Parcela" badge is the only trace of us.',
+    af2title:'Ready in 60 seconds', af2desc:'Enter the postcode, select the language, click generate. The PDF is ready before the meeting ends.',
+    af3title:'All 4 languages', af3desc:'English, Spanish, German, and French. Essential for agencies working with international buyers across Spain.',
+    af4title:'Pricing tailored to your agency', af4desc:"From independent agents to multi-branch networks. We discuss pricing directly — no fixed tiers, no surprises. Get in touch and we'll put together a proposal within 24 hours.",
+    contactTitle:'Request a demo & pricing', contactSub:"Tell us about your agency and we'll reply within 24 hours with a tailored proposal and a free sample report with your branding on it.",
+    labelAgency:'Agency name', labelContact:'Your name & role', labelEmail:'Email', labelSize:'Agency size', labelLocations:'Main locations covered', labelMessage:"Anything else?", labelCard:'Card details', discountLabel:'Discount code',
+    submitContact:'Send enquiry →', proofLabel:'Why agencies choose Parcela Pro',
+    proofStat1:'Branded PDF', proofStat2:'Delivery', proofStat3:'Languages',
+    successTitle:'Report on its way', successSub:'Your Parcela report has been sent to', successSub2:' Check your inbox — arrives within 60 seconds.',
+    agencySuccessTitle:'Enquiry received', agencySuccessSub:"We'll be in touch within 24 hours with a tailored proposal and a free branded sample report.",
+    done:'Done',
+  },
+  es: {
+    individual:'Particular', agency:'Agencia', getReport:'Obtener informe',
+    navTagline:'Inteligencia inmobiliaria',
+    heroEyebrow:'Inteligencia inmobiliaria en España',
+    heroTitle:'Descubre si un barrio está <em>en alza</em> antes de comprar.',
+    heroBody:'Las agencias te muestran el precio de hoy. Parcela te muestra hacia dónde va el barrio — con un índice de señales propio, actualizado a diario y sintetizado en un informe profesional.',
+    statSignals:'Señales de datos', statDelivery:'Entrega del informe', statRefresh:'Actualización diaria',
+    whyTitle:'Por qué los compradores usan Parcela',
+    why1:'Las agencias solo muestran datos pasados. Parcela detecta las señales antes de que se reflejen en los precios.',
+    why2:'Los compradores extranjeros no tienen visibilidad sobre las señales de urbanismo, regulación e inversión que más importan.',
+    why3:'Un informe de €79 para una decisión de €500.000. Comprar en el barrio equivocado puede costarte seis cifras.',
+    why4:'Toda la inteligencia proviene de fuentes de datos institucionales verificadas — no encuestas ni opiniones de agentes.',
+    searchEyebrow:'Empieza aquí', searchTitle:'Busca cualquier zona de España',
+    searchSub:'Introduce un código postal o el nombre de un barrio y confirmaremos la zona antes de que elijas tu informe.',
+    searchBtn:'Buscar →', searchHint:'Prueba: 07001 · Santa Catalina · Sóller · Gràcia · Salamanca',
+    areaIdentified:'Zona identificada', mapConfirm:'Confirma la zona y elige tu informe.',
+    regionEyebrow:'Informe regional', regionTitle:'Selecciona una Comunidad Autónoma',
+    regionSub:'Elige la región sobre la que quieres inteligencia completa — todos los barrios clasificados, zonas en alza identificadas, riesgos señalados.',
+    regionSelected:'Región seleccionada', regionConfirmSub:'Inteligencia regional completa — todos los barrios clasificados',
+    deliveryNote:'Enviado a tu correo en 60 segundos',
+    reportsEyebrow:'Informes de inteligencia', reportsTitle:'Tres informes. Una decisión.',
+    reportsSub:'Desde un barrio concreto hasta toda España — elige el nivel de inteligencia que necesitas.',
+    p1type:'Zona única', p1name:'Informe de Barrio',
+    p1desc:'Un análisis completo sobre un código postal o barrio específico. Todo lo que necesitas saber sobre hacia dónde va esa zona en los próximos cinco años.',
+    p1items:['Parcela Future Score™ (0–100) con justificación','Análisis completo de señales — más de 8 dimensiones','Proyección de precios a 5 años','Evaluación de riesgo regulatorio y STR','Análisis del pipeline urbanístico','Riesgos clave y alertas','Barrios comparables clasificados','Informe de analista en tu idioma','PDF profesional con fecha y disclaimer legal'],
+    p2type:'Toda la región', p2name:'Informe Regional',
+    p2desc:'Inteligencia completa sobre una región entera — Mallorca, Madrid, Barcelona, Costa del Sol y más. Barrios clasificados, zonas en alza, zonas a evitar.',
+    p2items:['Todo lo incluido en el Informe de Barrio','Todos los barrios de la región clasificados y puntuados','Top 5 zonas en alza en la región','Zonas a abordar con cautela — con razones detalladas','Matriz precio vs trayectoria para la región','Concentración de compradores internacionales por zona','Pipeline de infraestructuras regional','PDF profesional de 10 a 15 páginas'],
+    mostPopular:'Más popular',
+    p3type:'España completa', p3name:'Atlas de Inteligencia de España',
+    p3desc:'La visión completa del mercado inmobiliario español. Todas las regiones clasificadas, top 10 zonas en alza, top 5 a evitar, análisis regulatorio y de riesgo climático.',
+    p3items:['Todo lo incluido en el Informe Regional','Top 10 zonas en alza en España, clasificadas y puntuadas','Top 5 zonas a abordar con cautela','Análisis regional completo — Mallorca, Madrid, Barcelona y más','Matriz valor vs trayectoria — toda España','Concentración de compradores internacionales por región','Resumen de riesgo regulatorio por región','Pipeline de infraestructuras 2025–2030','Análisis de riesgo climático y medioambiental','Atlas PDF de más de 20 páginas'],
+    oneTime:'Pago único · Zona única', oneTimeRegion:'Pago único · Región completa', oneTimeSpain:'Pago único · España completa',
+    getAtlas:'Obtener Atlas', getRegion:'Obtener informe',
+    catastroEyebrow:'Due diligence inmobiliaria', catastroTitle:'Conoce la propiedad. No solo el barrio.',
+    catastroSub:'Los informes de barrio de Parcela te dicen dónde comprar. Nuestros productos de inteligencia catastral te dicen si la propiedad concreta es lo que parece.',
+    newBadge:'Nuevo',
+    cat1name:'Dossier de Propiedad',
+    cat1desc:'El registro catastral completo de cualquier propiedad específica. Superficie construida oficial, estado registral legal, valor catastral frente al precio de venta.',
+    cat1items:['Referencia catastral e identificador de la propiedad','m² construidos registrados vs. publicados en el anuncio','Verificación del estado de inscripción registral','Valor catastral vs. precio de venta actual','Zona de inundación y riesgo medioambiental','Clasificación urbanística (residencial / rústico / protegido)','PDF entregado en 60 segundos'],
+    cat2name:'Inteligencia de Negociación',
+    cat2desc:'Antes de hacer una oferta. Días en el mercado, historial de precios, tipo de propietario, precios de venta comparables en la zona — y un informe de negociación generado por IA para esta propiedad concreta.',
+    cat2items:['Días en el mercado e historial de precios','Tipo de propietario (particular / promotor / banco)','Precios de venta comparables en 500m (últimos 12 meses)','Precio por m² vs. media del barrio','Señales de urgencia (tiempo largo en mercado, rebajas repetidas)','Informe de negociación IA: oferta inicial, puntos de presión, alertas','Entregado en PDF en 60 segundos'],
+    perProperty:'Pago único · Por propiedad', getDossier:'Obtener dossier', getNegotiation:'Obtener informe',
+    howEyebrow:'Metodología', howTitle:'Cómo funciona Parcela',
+    howNum1:'01 · Diario', howStep1Title:'Ingestión de señales', howStep1Desc:'Nuestra infraestructura procesa continuamente múltiples flujos de datos institucionales en todas las regiones monitorizadas. Las señales se actualizan a diario.',
+    howNum2:'02 · Ponderado', howStep2Title:'Puntuación inteligente', howStep2Desc:'Cada señal se pondera según su capacidad predictiva histórica. Los indicadores adelantados tienen mayor peso que los rezagados. El modelo se calibra de forma continua.',
+    howNum3:'03 · Automatizado', howStep3Title:'Síntesis', howStep3Desc:'Las señales procesadas se sintetizan mediante IA en un informe claro y preciso — redactado con el rigor de una nota de investigación de banca privada.',
+    howNum4:'04 · 60 segundos', howStep4Title:'Entrega del informe', howStep4Desc:'Un PDF profesional — con fecha, disclaimer legal y entregado en tu correo en menos de un minuto. En inglés, español, alemán o francés.',
+    dataEyebrow:'Infraestructura de datos', dataTitle:'Datos institucionales. Inteligencia propia.',
+    dataSub:'Parcela agrega y pondera señales procedentes de fuentes institucionales verificadas en toda España. Nuestra metodología es propietaria — lo que sí podemos decirte es que cada dato es oficial, público y se actualiza de forma continua.',
+    d1name:'Datos regulatorios y de licencias', d1meta:'Registros oficiales del gobierno · Actualización diaria',
+    d2name:'Señales de planeamiento urbano', d2meta:'Portales municipales de urbanismo · Semanal',
+    d3name:'Índice de transacciones inmobiliarias', d3meta:'Registros de la propiedad oficiales · Diario',
+    d4name:'Indicadores de actividad comercial', d4meta:'Bases de datos de actividad empresarial · Diario',
+    d5name:'Pipeline de inversión pública', d5meta:'Boletines oficiales del gobierno · Semanal',
+    d6name:'Registros del Catastro', d6meta:'Catastro español · Por propiedad',
+    d7name:'Indicadores de vitalidad económica', d7meta:'Seguimiento de actividad comercial · Semanal',
+    d8name:'Factores de riesgo medioambiental', d8meta:'Cartografía oficial de riesgos · Actualización anual',
+    agencyEyebrow:'Para profesionales inmobiliarios',
+    agencyTitle:'Da a tus compradores una inteligencia que <em>ningún otro agente</em> puede ofrecer.',
+    agencyBody:'Parcela Pro te permite entregar informes de inteligencia inmobiliaria con tu marca a tus clientes — con tu logo, tu nombre y tus datos de contacto en la portada. Con Parcela de fondo.',
+    af1title:'Informes totalmente personalizados', af1desc:'Portada completamente a medida — tu logo, foto del agente, bio, datos de contacto y un mensaje personalizado para cada cliente. Solo un pequeño sello "Powered by Parcela" nos delata.',
+    af2title:'Listo en 60 segundos', af2desc:'Introduce el código postal, selecciona el idioma, haz clic en generar. El PDF está listo antes de que termine la reunión.',
+    af3title:'Los 4 idiomas', af3desc:'Inglés, español, alemán y francés. Imprescindible para agencias que trabajan con compradores internacionales en España.',
+    af4title:'Precios adaptados a tu agencia', af4desc:'Desde agentes independientes hasta redes con múltiples oficinas. Hablamos de precios directamente — sin tarifas fijas, sin sorpresas. Escríbenos y te enviamos una propuesta en 24 horas.',
+    contactTitle:'Solicitar demo y precios', contactSub:'Cuéntanos sobre tu agencia y te responderemos en 24 horas con una propuesta personalizada y un informe de muestra con tu marca.',
+    labelAgency:'Nombre de la agencia', labelContact:'Tu nombre y cargo', labelEmail:'Email', labelSize:'Tamaño de la agencia', labelLocations:'Principales zonas', labelMessage:'¿Algo más?', labelCard:'Datos de la tarjeta', discountLabel:'Código de descuento',
+    submitContact:'Enviar consulta →', proofLabel:'Por qué las agencias eligen Parcela Pro',
+    proofStat1:'PDF con tu marca', proofStat2:'Entrega', proofStat3:'Idiomas',
+    successTitle:'Informe en camino', successSub:'Tu informe Parcela ha sido enviado a', successSub2:' Revisa tu correo — llega en 60 segundos.',
+    agencySuccessTitle:'Consulta recibida', agencySuccessSub:'Nos pondremos en contacto en 24 horas con una propuesta personalizada y un informe de muestra gratuito con tu marca.',
+    done:'Hecho',
+  },
+  de: {
+    individual:'Privatperson', agency:'Agentur', getReport:'Bericht anfordern',
+    navTagline:'Immobilienintelligenz',
+    heroEyebrow:'Immobilienintelligenz für Spanien',
+    heroTitle:'Erfahren Sie, ob ein Viertel <em>im Aufstieg</em> ist — bevor Sie kaufen.',
+    heroBody:'Makler zeigen Ihnen den heutigen Preis. Parcela zeigt Ihnen, wohin sich das Viertel entwickelt — mit einem proprietären Signal-Index, der täglich aktualisiert und zu einem professionellen Bericht verdichtet wird.',
+    statSignals:'Datensignale', statDelivery:'Berichtlieferung', statRefresh:'Tägliche Aktualisierung',
+    whyTitle:'Warum Käufer Parcela nutzen',
+    why1:'Makler zeigen nur nachlaufende Daten. Parcela erkennt die Signale, bevor sie sich in den Preisen niederschlagen.',
+    why2:'Ausländische Käufer haben keinen Einblick in die Planungs-, Regulierungs- und Investitionssignale, die am wichtigsten sind.',
+    why3:'Ein €79-Bericht für eine €500.000-Entscheidung. Die Kosten eines Kaufs im falschen Viertel gehen in die sechsstellige Höhe.',
+    why4:'Alle Erkenntnisse stammen aus verifizierten institutionellen Datenquellen — keine Umfragen, keine Maklermeinungen.',
+    searchEyebrow:'Hier beginnen', searchTitle:'Beliebige Region in Spanien suchen',
+    searchSub:'Geben Sie eine Postleitzahl oder einen Stadtteilnamen ein — wir bestätigen das Gebiet, bevor Sie Ihren Bericht auswählen.',
+    searchBtn:'Suchen →', searchHint:'Versuchen Sie: 07001 · Santa Catalina · Gràcia · Salamanca',
+    areaIdentified:'Gebiet identifiziert', mapConfirm:'Bestätigen Sie das Gebiet und wählen Sie Ihren Bericht.',
+    regionEyebrow:'Regionsbericht', regionTitle:'Comunidad Autónoma auswählen',
+    regionSub:'Wählen Sie die Region, für die Sie vollständige Marktintelligenz wünschen — alle Viertel bewertet, aufstrebende Zonen identifiziert, Risiken markiert.',
+    regionSelected:'Region ausgewählt', regionConfirmSub:'Vollständige Regionsintelligenz — alle Viertel bewertet',
+    deliveryNote:'In 60 Sekunden in Ihrem Postfach',
+    reportsEyebrow:'Intelligence-Berichte', reportsTitle:'Drei Berichte. Eine Entscheidung.',
+    reportsSub:'Von einem einzelnen Stadtviertel bis ganz Spanien — wählen Sie das Intelligenzniveau, das Sie benötigen.',
+    p1type:'Einzelgebiet', p1name:'Stadtviertel-Bericht',
+    p1desc:'Ein umfassender Intelligence-Bericht über eine bestimmte Postleitzahl oder ein Viertel. Alles, was Sie wissen müssen, um die Entwicklung der nächsten fünf Jahre einzuschätzen.',
+    p1items:['Parcela Future Score™ (0–100) mit Begründung','Vollständige Signalanalyse — über 8 Dimensionen','5-Jahres-Preisentwicklungsausblick','Regulatorische Risikobewertung & STR-Analyse','Bebauungsplan-Pipeline','Schlüsselrisiken und Warnhinweise','Vergleichbare Viertel mit Ranking','Analystenkommentar in Ihrer Sprache','Professionelles PDF mit Zeitstempel und Rechtsvorbehalt'],
+    p2type:'Gesamte Region', p2name:'Regionaler Intelligence-Bericht',
+    p2desc:'Vollständige Marktanalyse einer gesamten Region — Mallorca, Madrid, Barcelona, Costa del Sol und mehr. Alle Viertel bewertet, aufstrebende Zonen und Risikogebiete identifiziert.',
+    p2items:['Alles aus dem Stadtviertel-Bericht','Alle Viertel der Region bewertet und gerankt','Top 5 aufstrebende Zonen der Region','Vorsichtsgebiete mit detaillierter Begründung','Preis-Trajektorien-Matrix für die Region','Internationale Käuferkonzentration nach Zone','Infrastruktur-Pipeline der Region','Professionelles PDF mit 10–15 Seiten'],
+    mostPopular:'Am beliebtesten',
+    p3type:'Ganz Spanien', p3name:'Spanien Intelligence-Atlas',
+    p3desc:'Das vollständige Bild des spanischen Immobilienmarktes. Alle Regionen bewertet, Top 10 aufstrebende Gebiete, Top 5 Risikogebiete, regulatorischer und klimatischer Risikoüberblick.',
+    p3items:['Alles aus dem Regionalen Bericht','Top 10 aufstrebende Gebiete in Spanien, bewertet und gerankt','Top 5 Gebiete mit erhöhtem Risiko','Vollständige Regionalanalyse — Mallorca, Madrid, Barcelona und mehr','Wert-Trajektorien-Matrix für ganz Spanien','Internationale Käuferkonzentration nach Region','Regulatorischer Risikoüberblick nach Regionen','Infrastruktur-Pipeline 2025–2030','Klima- und Umweltrisikobewertung','Professioneller PDF-Atlas mit über 20 Seiten'],
+    oneTime:'Einmalig · Einzelgebiet', oneTimeRegion:'Einmalig · Gesamte Region', oneTimeSpain:'Einmalig · Ganz Spanien',
+    getAtlas:'Atlas anfordern', getRegion:'Bericht anfordern',
+    catastroEyebrow:'Immobilien-Due-Diligence', catastroTitle:'Kennen Sie die Immobilie. Nicht nur das Viertel.',
+    catastroSub:'Parcelas Stadtviertelberichte sagen Ihnen, wo Sie kaufen sollen. Unsere Katasterprodukte sagen Ihnen, ob die konkrete Immobilie das ist, was sie zu sein scheint.',
+    newBadge:'Neu',
+    cat1name:'Immobilien-Dossier',
+    cat1desc:'Der vollständige Katastereintrag einer bestimmten Immobilie. Offizielle Wohnfläche, rechtlicher Registrierungsstatus, Katasterwert im Vergleich zum Angebotspreis — direkt aus dem spanischen Grundbuch.',
+    cat1items:['Offizieller Katasterbezug und Immobilien-ID','Registrierte Wohnfläche m² vs. inserierte m²','Prüfung des rechtlichen Registrierungsstatus','Katasterwert vs. aktueller Angebotspreis','Hochwasserzone und Umweltrisiko','Bauliche Klassifizierung (Wohn- / Landwirtschafts- / Schutzzone)','PDF-Dossier in 60 Sekunden'],
+    cat2name:'Verhandlungsintelligenz',
+    cat2desc:'Vor Ihrem Angebot. Tage auf dem Markt, Preisverlauf, Eigentümertyp, vergleichbare Verkaufspreise in der Umgebung — und ein KI-generiertes Verhandlungsbriefing für genau diese Immobilie.',
+    cat2items:['Markttage und Preisverlauf','Eigentümertyp (Privatverkäufer / Bauträger / Bank)','Vergleichbare Verkaufspreise im Umkreis von 500 m (letzte 12 Monate)','Preis pro m² vs. Viertelsdurchschnitt','Alarmsignale (lange Vermarktungszeit, wiederholte Preissenkungen)','KI-Verhandlungsbriefing: Einstiegsangebot, Hebelpunkte, Warnzeichen','Als PDF in 60 Sekunden'],
+    perProperty:'Einmalig · Pro Immobilie', getDossier:'Dossier anfordern', getNegotiation:'Bericht anfordern',
+    howEyebrow:'Methodik', howTitle:'Wie Parcela funktioniert',
+    howNum1:'01 · Täglich', howStep1Title:'Signalerfassung', howStep1Desc:'Unsere proprietäre Infrastruktur verarbeitet kontinuierlich mehrere institutionelle Datenströme in allen erfassten Regionen. Signale werden täglich aktualisiert.',
+    howNum2:'02 · Gewichtet', howStep2Title:'Intelligence-Bewertung', howStep2Desc:'Jedes Signal wird nach seiner historischen Vorhersagekraft gewichtet. Frühindikatoren erhalten mehr Gewicht als nachlaufende. Das Modell wird laufend kalibriert.',
+    howNum3:'03 · Automatisiert', howStep3Title:'Synthese', howStep3Desc:'Die verarbeiteten Signale werden durch KI zu einem klaren Intelligence-Bericht verdichtet — formuliert mit der Präzision einer Privatbank-Forschungsnotiz.',
+    howNum4:'04 · 60 Sekunden', howStep4Title:'Berichtlieferung', howStep4Desc:'Ein professionelles PDF — mit Zeitstempel und rechtlichem Haftungsausschluss, in unter einer Minute in Ihrem Postfach. Auf Englisch, Spanisch, Deutsch oder Französisch.',
+    dataEyebrow:'Dateninfrastruktur', dataTitle:'Institutionelle Daten. Proprietäre Intelligenz.',
+    dataSub:'Parcela aggregiert und gewichtet Signale aus verifizierten institutionellen Quellen in ganz Spanien. Unsere Methodik ist proprietär — was wir sagen können: jede Eingabe ist offiziell, öffentlich und wird laufend aktualisiert.',
+    d1name:'Regulatorische Daten und Lizenzen', d1meta:'Offizielle Regierungsregister · Täglich',
+    d2name:'Stadtplanungssignale', d2meta:'Kommunale Planungsportale · Wöchentlich',
+    d3name:'Immobilientransaktionsindex', d3meta:'Offizielle Grundbücher · Täglich',
+    d4name:'Gewerbliche Aktivitätsindikatoren', d4meta:'Unternehmensregisterdatenbanken · Täglich',
+    d5name:'Öffentliche Investitions-Pipeline', d5meta:'Offizielle Regierungsblätter · Wöchentlich',
+    d6name:'Katastereinträge', d6meta:'Spanisches Grundbuch · Pro Immobilie',
+    d7name:'Wirtschaftliche Vitalitätsindikatoren', d7meta:'Gewerbliche Aktivitätsverfolgung · Wöchentlich',
+    d8name:'Umweltrisikofaktoren', d8meta:'Offizielle Risikokartierung · Jährliche Aktualisierung',
+    agencyEyebrow:'Für Immobilienprofis',
+    agencyTitle:'Bieten Sie Ihren Käufern Intelligenz, die <em>kein anderer Makler</em> liefern kann.',
+    agencyBody:'Parcela Pro ermöglicht es Ihnen, gebrandete Immobilien-Intelligence-Berichte an Ihre Kunden zu liefern — mit Ihrem Logo, Ihrem Namen und Ihren Kontaktdaten auf dem Deckblatt.',
+    af1title:'Vollständig white-label-fähige Berichte', af1desc:'Komplett angepasstes Deckblatt — Ihr Agenturlogo, Foto des Maklers, Kurzbiografie, Kontaktdaten und eine persönliche Nachricht für jeden Kunden. Einzig ein kleiner "Powered by Parcela"-Hinweis verweist auf uns.',
+    af2title:'In 60 Sekunden fertig', af2desc:'Postleitzahl eingeben, Sprache wählen, auf Generieren klicken. Das PDF ist fertig, bevor das Meeting endet.',
+    af3title:'Alle 4 Sprachen', af3desc:'Englisch, Spanisch, Deutsch und Französisch. Unverzichtbar für Agenturen, die mit internationalen Käufern in Spanien arbeiten.',
+    af4title:'Preise passend zu Ihrer Agentur', af4desc:'Von unabhängigen Maklern bis hin zu Mehrfilialnetzwerken. Wir besprechen Preise direkt — keine Pauschaltarife, keine Überraschungen. Schreiben Sie uns und wir senden Ihnen innerhalb von 24 Stunden ein Angebot.',
+    contactTitle:'Demo & Preise anfragen', contactSub:'Erzählen Sie uns von Ihrer Agentur — wir antworten innerhalb von 24 Stunden mit einem maßgeschneiderten Angebot und einem kostenlosen Musterbericht mit Ihrem Branding.',
+    labelAgency:'Agenturname', labelContact:'Ihr Name und Funktion', labelEmail:'E-Mail', labelSize:'Agenturgröße', labelLocations:'Hauptstandorte', labelMessage:'Weitere Anmerkungen?', labelCard:'Kartendetails', discountLabel:'Rabattcode',
+    submitContact:'Anfrage senden →', proofLabel:'Warum Agenturen Parcela Pro wählen',
+    proofStat1:'Gebrandetes PDF', proofStat2:'Lieferzeit', proofStat3:'Sprachen',
+    successTitle:'Bericht ist unterwegs', successSub:'Ihr Parcela-Bericht wurde gesendet an', successSub2:' Prüfen Sie Ihren Posteingang — Ankunft in 60 Sekunden.',
+    agencySuccessTitle:'Anfrage erhalten', agencySuccessSub:'Wir melden uns innerhalb von 24 Stunden mit einem maßgeschneiderten Angebot und einem kostenlosen Musterbericht.',
+    done:'Fertig',
+  },
+    statSignals:'Datensignale', statDelivery:'Berichtlieferung', statRefresh:'Tägliche Aktualisierung',
+    whyTitle:'Warum Käufer Parcela nutzen',
+    why1:'Makler zeigen nur nachlaufende Daten. Parcela liest die Signale, bevor sie sich in den Preisen niederschlagen.',
+    why2:'Ausländische Käufer haben keinen Überblick über Planungs- und Regulierungssignale, die am wichtigsten sind.',
+    why3:'Ein €79-Bericht für eine €500.000-Entscheidung. Die Kosten des Kaufs im falschen Viertel werden in sechsstelligen Beträgen gemessen.',
+    why4:'Alle Erkenntnisse stammen aus verifizierten institutionellen Datenquellen — keine Umfragen oder Maklermeinungen.',
+    searchEyebrow:'Hier beginnen', searchTitle:'Suchen Sie eine beliebige Region in Spanien',
+    searchSub:'Geben Sie eine Postleitzahl oder ein Viertel ein. Wir bestätigen das Gebiet bevor Sie Ihren Bericht auswählen.',
+    searchBtn:'Suchen →', searchHint:'Versuchen: 07001 · Santa Catalina · Gràcia · Salamanca',
+    areaIdentified:'Gebiet identifiziert', mapConfirm:'Bestätigen Sie das Gebiet und wählen Sie Ihren Bericht.',
+    regionEyebrow:'Regionsbericht', regionTitle:'Wählen Sie eine Comunidad Autónoma',
+    regionSub:'Wählen Sie die Region, über die Sie vollständige Informationen möchten.',
+    regionSelected:'Region ausgewählt', regionConfirmSub:'Vollständige Regionsintelligenz — alle Viertel bewertet',
+    deliveryNote:'In 60 Sekunden in Ihrem Postfach',
+    reportsEyebrow:'Intelligence-Berichte', reportsTitle:'Drei Berichte. Eine Entscheidung.',
+    reportsSub:'Von einem einzelnen Viertel bis ganz Spanien — wählen Sie das benötigte Intelligenzniveau.',
+    p1type:'Einzelgebiet', p1name:'Stadtviertel-Bericht',
+    p1desc:'Ein umfassender Intelligence-Bericht über eine spezifische Postleitzahl oder ein Viertel. Alles, was Sie über die Entwicklung der nächsten fünf Jahre wissen müssen.',
+    p1items:['Parcela Future Score™ (0–100) mit Begründung','Vollständige Signalanalyse — 8+ Dimensionen','5-Jahres-Preisentwicklungsausblick','Regulatorische & STR-Risikobewertung','Bebauungsplan-Pipeline-Analyse','Schlüsselrisiken und Warnzeichen','Vergleichbare Viertel bewertet','Analystenbriefing in Ihrer Sprache','Professionelles PDF mit Zeitstempel'],
+    p2type:'Gesamte Region', p2name:'Regions-Intelligence-Bericht',
+    p2desc:'Vollständige Analyse einer ganzen Region — Mallorca, Madrid, Barcelona, Costa del Sol und mehr. Bewertete Viertel, aufstrebende Zonen.',
+    p2items:['Alles aus dem Stadtviertel-Bericht','Alle Viertel der Region bewertet und gerankt','Top 5 aufstrebende Zonen der Region','Vorsicht-Zonen — mit Begründungen','Preis-Trajektorien-Matrix für die Region','Internationale Käuferkonzentration nach Zone','Infrastruktur-Pipeline der Region','10–15-seitiges professionelles PDF'],
+    mostPopular:'Am beliebtesten',
+    p3type:'Ganz Spanien', p3name:'Spanien-Intelligence-Atlas',
+    p3desc:'Das vollständige Bild des spanischen Immobilienmarktes. Alle Regionen bewertet, Top 10 aufstrebende Gebiete, Top 5 zu vermeidende Gebiete.',
+    p3items:['Alles aus dem Regions-Bericht','Top 10 aufstrebende Gebiete in Spanien','Top 5 zu vermeidende Gebiete','Vollständige Regionalanalyse — Mallorca, Madrid, Barcelona','Wert-Trajektorien-Matrix für ganz Spanien','Internationale Käuferkonzentration nach Region','Regulatorischer Risikoüberblick','Infrastruktur-Pipeline 2025–2030','Klima- und Umweltrisikobewertung','20+ seitiger professioneller PDF-Atlas'],
+    oneTime:'Einmalig · Einzelgebiet', oneTimeRegion:'Einmalig · Gesamte Region', oneTimeSpain:'Einmalig · Ganz Spanien',
+    getAtlas:'Atlas erhalten', getRegion:'Bericht erhalten',
+    catastroEyebrow:'Immobilien-Due-Diligence', catastroTitle:'Kennen Sie die Immobilie. Nicht nur das Viertel.',
+    catastroSub:'Parcelas Viertelberichte zeigen Ihnen, wo Sie kaufen sollen. Unsere Kataster-Produkte zeigen Ihnen, ob die konkrete Immobilie dem entspricht, was sie zu sein scheint.',
+    newBadge:'Neu',
+    cat1name:'Immobilien-Dossier',
+    cat1desc:'Der vollständige Katastereintrag für eine bestimmte Immobilie. Offizielle Wohnfläche, rechtlicher Registrierungsstatus, Katasterwert versus Angebotspreis.',
+    cat1items:['Offizieller Katasterbezug & Immobilien-ID','Registrierte Wohnfläche m² vs. beworbene m²','Prüfung des Rechtsstatus','Katasterwert vs. aktueller Angebotspreis','Hochwasserzone & Umweltrisiko','Bauliche Klassifizierung (Wohn-/Landwirtschafts-/Schutzzone)','PDF in 60 Sekunden'],
+    cat2name:'Verhandlungsintelligenz',
+    cat2desc:'Vor Ihrem Angebot. Markttage, Preisverlauf, Eigentümertyp, vergleichbare Verkaufspreise — und ein KI-generiertes Verhandlungsbriefing.',
+    cat2items:['Markttage & Preisverlauf','Eigentümertyp (Privatverkäufer / Bauträger / Bank)','Vergleichbare Verkaufspreise im Umkreis von 500m','Preis pro m² vs. Viertelsdurchschnitt','Distress-Signale (lange Marktzeit, wiederholte Reduzierungen)','KI-Verhandlungsbriefing: Eröffnungsangebot, Hebelpunkte, Warnzeichen','Als PDF in 60 Sekunden'],
+    perProperty:'Einmalig · Pro Immobilie', getDossier:'Dossier erhalten', getNegotiation:'Bericht erhalten',
+    howEyebrow:'Methodik', howTitle:'Wie Parcela funktioniert',
+    howNum1:'01 · Täglich', howStep1Title:'Signalaufnahme', howStep1Desc:'Unsere proprietäre Infrastruktur verarbeitet kontinuierlich mehrere institutionelle Datenströme in allen verfolgten Regionen.',
+    howNum2:'02 · Gewichtet', howStep2Title:'Intelligence-Bewertung', howStep2Desc:'Jedes Signal wird nach seiner historischen Vorhersagekraft gewichtet. Frühindikatoren erhalten mehr Gewicht als nachlaufende.',
+    howNum3:'03 · Automatisiert', howStep3Title:'Synthese', howStep3Desc:'Verarbeitete Signale werden von KI zu einem klaren Intelligence-Bericht synthetisiert — mit der Präzision einer Privatbank-Forschungsnotiz.',
+    howNum4:'04 · 60 Sekunden', howStep4Title:'Berichtlieferung', howStep4Desc:'Ein professionelles PDF — mit Zeitstempel und rechtlichem Haftungsausschluss, in unter einer Minute in Ihrem Postfach.',
+    dataEyebrow:'Dateninfrastruktur', dataTitle:'Institutionelle Daten. Proprietäre Intelligenz.',
+    dataSub:'Parcela aggregiert und gewichtet Signale aus verifizierten institutionellen Quellen in ganz Spanien. Unsere Methodik ist proprietär — jede Eingabe ist offiziell und öffentlich.',
+    d1name:'Regulatorische & Lizenzdaten', d1meta:'Offizielle Regierungsregister · Täglich',
+    d2name:'Stadtplanungssignale', d2meta:'Kommunale Planungsportale · Wöchentlich',
+    d3name:'Immobilientransaktionsindex', d3meta:'Offizielle Grundbücher · Täglich',
+    d4name:'Gewerbliche Aktivitätsindikatoren', d4meta:'Unternehmensregisterdatenbanken · Täglich',
+    d5name:'Öffentliche Investitions-Pipeline', d5meta:'Offizielle Regierungsblätter · Wöchentlich',
+    d6name:'Katasterimmobilieneinträge', d6meta:'Spanisches Grundbuch · Pro Immobilie',
+    d7name:'Wirtschaftliche Vitalitätsindikatoren', d7meta:'Gewerbliche Aktivitätsverfolgung · Wöchentlich',
+    d8name:'Umweltrisikofaktoren', d8meta:'Offizielle Risikokartierung · Jährliche Aktualisierung',
+    agencyEyebrow:'Für Immobilienprofis',
+    agencyTitle:'Geben Sie Ihren Käufern Intelligenz, die <em>kein anderer Makler</em> bieten kann.',
+    agencyBody:'Parcela Pro ermöglicht es Ihnen, gebrandete Immobilienintelligenzberichte an Ihre Kunden zu liefern — mit Ihrem Logo und Ihren Kontaktdaten auf dem Cover.',
+    af1title:'Vollständig white-gelabelte Berichte', af1desc:'Vollständig angepasste Titelseite — Ihr Agenturlogo, Agentenfoto, Bio, Kontaktdaten und eine personalisierte Nachricht für jeden Kunden.',
+    af2title:'In 60 Sekunden fertig', af2desc:'Postleitzahl eingeben, Sprache wählen, generieren klicken. Das PDF ist fertig, bevor das Meeting endet.',
+    af3title:'Alle 4 Sprachen', af3desc:'Englisch, Spanisch, Deutsch und Französisch. Unerlässlich für Agenturen mit internationalen Käufern.',
+    af4title:'Preise angepasst an Ihre Agentur', af4desc:'Von unabhängigen Maklern bis hin zu Mehrfilialnetzwerken. Wir besprechen die Preise direkt — keine festen Tarife, keine Überraschungen.',
+  fr: {
+    individual:"Particulier", agency:"Agence", getReport:"Obtenir un rapport",
+    navTagline:"Intelligence immobilière",
+    heroEyebrow:"Intelligence immobilière en Espagne",
+    heroTitle:"Découvrez si un quartier est <em>en hausse</em> avant d'acheter.",
+    heroBody:"Les agents vous montrent le prix d'aujourd'hui. Parcela vous montre où va le quartier — avec un indice de signaux propriétaire mis à jour chaque jour et synthétisé en un rapport professionnel.",
+    statSignals:"Signaux de données", statDelivery:"Livraison du rapport", statRefresh:"Mise à jour quotidienne",
+    whyTitle:"Pourquoi les acheteurs utilisent Parcela",
+    why1:"Les agents ne montrent que des données retardées. Parcela détecte les signaux avant qu'ils ne se reflètent dans les prix.",
+    why2:"Les acheteurs étrangers n'ont aucune visibilité sur les signaux d'urbanisme, de réglementation et d'investissement les plus importants.",
+    why3:"Un rapport à €79 pour une décision à €500 000. Acheter dans le mauvais quartier peut coûter six chiffres.",
+    why4:"Toutes les analyses sont issues de sources de données institutionnelles vérifiées — pas d'enquêtes ni d'opinions d'agents.",
+    searchEyebrow:"Commencer ici", searchTitle:"Recherchez n'importe quelle zone en Espagne",
+    searchSub:"Saisissez un code postal ou le nom d'un quartier — nous confirmerons la zone avant que vous choisissiez votre rapport.",
+    searchBtn:"Rechercher →", searchHint:"Essayez : 07001 · Santa Catalina · Gràcia · Salamanca",
+    areaIdentified:"Zone identifiée", mapConfirm:"Confirmez la zone, puis choisissez votre rapport.",
+    regionEyebrow:"Rapport régional", regionTitle:"Sélectionnez une Communauté Autonome",
+    regionSub:"Choisissez la région pour laquelle vous souhaitez une intelligence complète — tous les quartiers classés, zones en hausse identifiées, risques signalés.",
+    regionSelected:"Région sélectionnée", regionConfirmSub:"Intelligence régionale complète — tous les quartiers classés",
+    deliveryNote:"Livré dans votre boîte en 60 secondes",
+    reportsEyebrow:"Rapports d'intelligence", reportsTitle:"Trois rapports. Une décision.",
+    reportsSub:"D'un quartier précis à toute l'Espagne — choisissez le niveau d'intelligence dont vous avez besoin.",
+    p1type:"Zone unique", p1name:"Rapport de quartier",
+    p1desc:"Un rapport d'intelligence complet sur un code postal ou un quartier précis. Tout ce que vous devez savoir sur l'évolution de cette zone au cours des cinq prochaines années.",
+    p1items:["Parcela Future Score™ (0–100) avec justification","Analyse complète des signaux — plus de 8 dimensions","Perspectives de prix sur 5 ans","Évaluation des risques réglementaires et STR","Analyse du pipeline urbanistique","Risques clés et alertes","Quartiers comparables classés","Note d'analyste dans votre langue","PDF professionnel horodaté avec disclaimer légal"],
+    p2type:"Toute la région", p2name:"Rapport d'intelligence régional",
+    p2desc:"Intelligence complète sur une région entière — Majorque, Madrid, Barcelone, Costa del Sol et plus. Tous les quartiers classés, zones en hausse et zones à éviter identifiées.",
+    p2items:["Tout le contenu du rapport de quartier","Tous les quartiers de la région classés et notés","Top 5 zones en hausse dans la région","Zones à aborder avec prudence — avec justifications détaillées","Matrice prix vs trajectoire pour la région","Concentration des acheteurs internationaux par zone","Pipeline d'infrastructures régional","PDF professionnel de 10 à 15 pages"],
+    mostPopular:"Le plus populaire",
+    p3type:"Toute l'Espagne", p3name:"Atlas d'intelligence espagnol",
+    p3desc:"Le tableau complet du marché immobilier espagnol. Toutes les régions classées, top 10 zones en hausse, top 5 zones à risque, analyse réglementaire et climatique.",
+    p3items:["Tout le contenu du rapport régional","Top 10 zones en hausse en Espagne, classées et notées","Top 5 zones à risque élevé","Analyse régionale complète — Majorque, Madrid, Barcelone et plus","Matrice valeur vs trajectoire pour toute l'Espagne","Concentration des acheteurs internationaux par région","Synthèse des risques réglementaires par région","Pipeline d'infrastructures 2025–2030","Risques climatiques et environnementaux","Atlas PDF professionnel de plus de 20 pages"],
+    oneTime:"Unique · Zone unique", oneTimeRegion:"Unique · Région complète", oneTimeSpain:"Unique · Toute l'Espagne",
+    getAtlas:"Obtenir l'Atlas", getRegion:"Obtenir le rapport",
+    catastroEyebrow:"Due diligence immobilière", catastroTitle:"Connaissez le bien. Pas seulement le quartier.",
+    catastroSub:"Les rapports de quartier de Parcela vous indiquent où acheter. Nos produits d'intelligence cadastrale vous indiquent si le bien en question est bien ce qu'il semble être.",
+    newBadge:"Nouveau",
+    cat1name:"Dossier de propriété",
+    cat1desc:"L'enregistrement cadastral complet d'un bien précis. Surface construite officielle, statut d'enregistrement légal, valeur cadastrale versus prix demandé — directement depuis le registre foncier espagnol.",
+    cat1items:["Référence cadastrale et identifiant du bien","m² construits enregistrés vs. annoncés","Vérification du statut d'enregistrement légal","Valeur cadastrale vs. prix de vente actuel","Zone inondable et risque environnemental","Classification urbanistique (résidentiel / agricole / protégé)","Dossier PDF livré en 60 secondes"],
+    cat2name:"Intelligence de négociation",
+    cat2desc:"Avant votre offre. Jours sur le marché, historique des prix, type de propriétaire, prix de vente comparables à proximité — et un briefing de négociation généré par IA pour ce bien précis.",
+    cat2items:["Jours sur le marché et historique des prix","Type de propriétaire (vendeur privé / promoteur / banque)","Prix de vente comparables dans un rayon de 500 m (12 derniers mois)","Prix au m² vs. moyenne du quartier","Signaux d'alerte (longue durée de mise en vente, baisses répétées)","Briefing de négociation IA : offre d'entrée, leviers, points de vigilance","Livré en PDF en 60 secondes"],
+    perProperty:"Unique · Par bien", getDossier:"Obtenir le dossier", getNegotiation:"Obtenir le rapport",
+    howEyebrow:"Méthodologie", howTitle:"Comment fonctionne Parcela",
+    howNum1:"01 · Quotidien", howStep1Title:"Collecte des signaux", howStep1Desc:"Notre infrastructure propriétaire traite en continu plusieurs flux de données institutionnels dans toutes les régions suivies. Les signaux sont actualisés chaque jour.",
+    howNum2:"02 · Pondéré", howStep2Title:"Notation intelligente", howStep2Desc:"Chaque signal est pondéré selon sa capacité prédictive historique. Les indicateurs avancés ont plus de poids que les indicateurs retardés. Le modèle est calibré en permanence.",
+    howNum3:"03 · Automatisé", howStep3Title:"Synthèse", howStep3Desc:"Les signaux traités sont synthétisés par IA en un rapport d'intelligence clair — rédigé avec la rigueur d'une note de recherche de banque privée.",
+    howNum4:"04 · 60 secondes", howStep4Title:"Livraison du rapport", howStep4Desc:"Un PDF professionnel — horodaté, avec disclaimer légal, livré en moins d'une minute dans votre boîte. En anglais, espagnol, allemand ou français.",
+    dataEyebrow:"Infrastructure de données", dataTitle:"Données institutionnelles. Intelligence propriétaire.",
+    dataSub:"Parcela agrège et pondère des signaux issus de sources institutionnelles vérifiées à travers l'Espagne. Notre méthodologie est propriétaire — ce que nous pouvons vous dire : chaque donnée est officielle, publique et mise à jour en continu.",
+    d1name:"Données réglementaires et licences", d1meta:"Registres officiels du gouvernement · Quotidien",
+    d2name:"Signaux d'urbanisme", d2meta:"Portails de planification municipaux · Hebdomadaire",
+    d3name:"Indice des transactions immobilières", d3meta:"Registres fonciers officiels · Quotidien",
+    d4name:"Indicateurs d'activité commerciale", d4meta:"Bases de données d'entreprises · Quotidien",
+    d5name:"Pipeline d'investissement public", d5meta:"Bulletins officiels du gouvernement · Hebdomadaire",
+    d6name:"Enregistrements cadastraux", d6meta:"Registre foncier espagnol · Par bien",
+    d7name:"Indicateurs de vitalité économique", d7meta:"Suivi de l'activité commerciale · Hebdomadaire",
+    d8name:"Facteurs de risque environnemental", d8meta:"Cartographie officielle des risques · Annuelle",
+    agencyEyebrow:"Pour les professionnels de l'immobilier",
+    agencyTitle:"Offrez à vos acheteurs une intelligence qu'<em>aucun autre agent</em> ne peut proposer.",
+    agencyBody:"Parcela Pro vous permet de livrer à vos clients des rapports d'intelligence immobilière à votre image — avec votre logo, votre nom et vos coordonnées en couverture.",
+    af1title:"Rapports entièrement en marque blanche", af1desc:"Page de couverture entièrement personnalisée — votre logo, photo de l'agent, biographie, coordonnées et un message personnalisé pour chaque client. Seul un petit badge « Powered by Parcela » nous identifie.",
+    af2title:"Prêt en 60 secondes", af2desc:"Saisissez le code postal, sélectionnez la langue, cliquez sur générer. Le PDF est prêt avant la fin de la réunion.",
+    af3title:"Les 4 langues", af3desc:"Anglais, espagnol, allemand et français. Indispensable pour les agences travaillant avec des acheteurs internationaux en Espagne.",
+    af4title:"Tarifs adaptés à votre agence", af4desc:"Des agents indépendants aux réseaux multi-agences. Nous discutons des tarifs directement — pas de grilles fixes, pas de surprises. Contactez-nous et nous vous enverrons une proposition sous 24 heures.",
+    contactTitle:"Demander une démo et des tarifs", contactSub:"Parlez-nous de votre agence et nous vous répondrons sous 24 heures avec une proposition personnalisée et un exemple de rapport gratuit à votre image.",
+    labelAgency:"Nom de l'agence", labelContact:"Votre nom et fonction", labelEmail:"Email", labelSize:"Taille de l'agence", labelLocations:"Zones principales", labelMessage:"Autre chose ?", labelCard:"Coordonnées bancaires", discountLabel:"Code de réduction",
+    submitContact:"Envoyer →", proofLabel:"Pourquoi les agences choisissent Parcela Pro",
+    proofStat1:"PDF personnalisé", proofStat2:"Livraison", proofStat3:"Langues",
+    successTitle:"Rapport en route", successSub:"Votre rapport Parcela a été envoyé à", successSub2:" Vérifiez votre boîte mail — il arrive en 60 secondes.",
+    agencySuccessTitle:"Demande reçue", agencySuccessSub:"Nous vous contacterons sous 24 heures avec une proposition personnalisée et un exemple de rapport gratuit.",
+    done:"Terminé",
+  }
+};
+
+let currentLang = 'en';
+let currentAudience = 'individual';
+let currentProduct = 'neighbourhood';
+let currentArea = '';
+let currentDiscountPct = 0;
+let stripeCard = null;
+let stripeInstance = null;
+
+// ── LANGUAGE ──
+function setLang(lang) {
+  currentLang = lang;
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.lang-btn[onclick="setLang('${lang}')"]`).classList.add('active');
+  applyTranslations();
+}
+function t(key) { return T[currentLang][key] || T['en'][key] || key; }
+
+function applyTranslations() {
+  document.querySelectorAll('[data-t]').forEach(el => {
+    const val = t(el.dataset.t);
+    if (val && val !== el.dataset.t) el.innerHTML = val;
+  });
+  document.getElementById('nav-tagline').textContent = t('navTagline');
+  renderProductIncludes();
+  document.querySelector('#btn-individual span').textContent = t('individual');
+  document.querySelector('#btn-agency span').textContent = t('agency');
+  document.querySelector('.nav-cta span').textContent = currentAudience === 'agency' ? t('contactTitle').split('&')[0].trim() : t('getReport');
+}
+
+function renderProductIncludes() {
+  const svgCheck = `<svg viewBox="0 0 7 7" fill="none" style="width:7px;height:7px;"><path d="M1 3.5L3 5.5L6 1.5" stroke="#1e5c3a" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const makeLi = txt => `<li><div class="check-mark">${svgCheck}</div><span>${txt}</span></li>`;
+  ['p1','p2','p3'].forEach(p => {
+    const el = document.getElementById(p+'-includes');
+    if (el) el.innerHTML = (t(p+'items')||[]).map(makeLi).join('');
+  });
+  ['cat1','cat2'].forEach(c => {
+    const el = document.getElementById(c+'-items');
+    if (el) el.innerHTML = (t(c+'items')||[]).map(makeLi).join('');
+  });
+}
+
+// ── AUDIENCE ──
+function setAudience(aud) {
+  currentAudience = aud;
+  document.getElementById('view-individual').classList.toggle('active', aud==='individual');
+  document.getElementById('view-agency').classList.toggle('active', aud==='agency');
+  document.getElementById('btn-individual').classList.toggle('active', aud==='individual');
+  document.getElementById('btn-agency').classList.toggle('active', aud==='agency');
+  const cta = document.getElementById('nav-cta-btn');
+  if (aud==='agency') {
+    cta.querySelector('span').textContent = t('contactTitle').split('&')[0].trim();
+    cta.onclick = () => document.querySelector('.agency-contact-card').scrollIntoView({behavior:'smooth'});
+  } else {
+    cta.querySelector('span').textContent = t('getReport');
+    cta.onclick = () => document.getElementById('search').scrollIntoView({behavior:'smooth'});
+  }
+}
+
+function goHome() { window.scrollTo({top:0,behavior:'smooth'}); }
+
+// ── SPANISH POSTCODES (sample lookup — extend as needed) ──
+const POSTCODE_LOOKUP = {
+  // Baleares
+  '07001':'Palma de Mallorca, Baleares','07002':'Palma de Mallorca, Baleares','07003':'Palma de Mallorca, Baleares',
+  '07004':'Palma de Mallorca, Baleares','07005':'Palma de Mallorca, Baleares','07006':'Palma de Mallorca, Baleares',
+  '07007':'Palma de Mallorca, Baleares','07008':'Palma de Mallorca, Baleares','07009':'Palma de Mallorca, Baleares',
+  '07010':'Palma de Mallorca, Baleares','07011':'Palma de Mallorca, Baleares','07012':'Palma de Mallorca, Baleares',
+  '07013':'Palma de Mallorca, Baleares','07014':'Palma de Mallorca, Baleares','07015':'Palma de Mallorca, Baleares',
+  '07016':'Palma de Mallorca, Baleares','07100':'Sóller, Mallorca','07108':'Port de Sóller, Mallorca',
+  '07109':'Fornalutx, Mallorca','07110':'Biniaraix, Mallorca','07120':'Establiments, Mallorca',
+  '07140':'Sencelles, Mallorca','07141':'Costitx, Mallorca','07142':'Santa Eugènia, Mallorca',
+  '07143':'Biniali, Mallorca','07144':'Sencelles, Mallorca','07150':'Andratx, Mallorca',
+  '07157':'Port d\'Andratx, Mallorca','07160':'Paguera, Mallorca','07180':'Santa Ponça, Mallorca',
+  '07181':'Magaluf, Mallorca','07182':'El Toro, Mallorca','07183':'Costa de la Calma, Mallorca',
+  '07184':'Calvià, Mallorca','07190':'Esporles, Mallorca','07191':'Banyalbufar, Mallorca',
+  '07192':'Estellencs, Mallorca','07193':'Puigpunyent, Mallorca','07194':'Galilea, Mallorca',
+  '07195':'Es Capdellà, Mallorca','07210':'Algaida, Mallorca','07211':'Montuïri, Mallorca',
+  '07220':'Campos, Mallorca','07230':'Montuïri, Mallorca','07240':'Sant Joan, Mallorca',
+  '07250':'Vilafranca de Bonany, Mallorca','07260':'Porreres, Mallorca','07300':'Inca, Mallorca',
+  '07310':'Campanet, Mallorca','07311':'Búger, Mallorca','07312':'Mancor de la Vall, Mallorca',
+  '07313':'Selva, Mallorca','07314':'Moscari, Mallorca','07315':'Escorca, Mallorca',
+  '07320':'Santa Maria del Camí, Mallorca','07340':'Alaró, Mallorca','07350':'Binissalem, Mallorca',
+  '07360':'Lloseta, Mallorca','07370':'Sineu, Mallorca','07380':'Muro, Mallorca',
+  '07400':'Alcúdia, Mallorca','07409':'Puerto de Alcúdia, Mallorca','07420':'Sa Pobla, Mallorca',
+  '07430':'Llubí, Mallorca','07440':'Muro, Mallorca','07450':'Santa Margalida, Mallorca',
+  '07458':'Can Picafort, Mallorca','07459':'Son Serra de Marina, Mallorca','07460':'Pollença, Mallorca',
+  '07469':'Port de Pollença, Mallorca','07470':'Port de Pollença, Mallorca','07480':'Can Picafort, Mallorca',
+  '07500':'Manacor, Mallorca','07510':'Sineu, Mallorca','07520':'Petra, Mallorca',
+  '07530':'Sant Llorenç des Cardassar, Mallorca','07540':'Son Servera, Mallorca',
+  '07550':'Son Servera, Mallorca','07559':'Porto Cristo, Mallorca','07560':'Manacor, Mallorca',
+  '07570':'Artà, Mallorca','07580':'Capdepera, Mallorca','07589':'Cala Ratjada, Mallorca',
+  '07590':'Felanitx, Mallorca','07600':'Llucmajor, Mallorca','07609':'El Arenal, Mallorca',
+  '07610':'El Arenal, Mallorca','07620':'Llucmajor, Mallorca','07630':'Campos, Mallorca',
+  '07640':'Ses Salines, Mallorca','07650':'Santanyí, Mallorca','07659':'Cala d\'Or, Mallorca',
+  '07660':'Cala d\'Or, Mallorca','07669':'Portopetro, Mallorca','07680':'Porto Colom, Mallorca',
+  '07690':'Felanitx, Mallorca','07700':'Maó, Menorca','07701':'Maó, Menorca',
+  '07702':'Maó, Menorca','07710':'Sant Lluís, Menorca','07711':'Binibèquer, Menorca',
+  '07712':'Ses Tanques, Menorca','07714':'Sant Climent, Menorca','07720':'Es Castell, Menorca',
+  '07730':'Alaior, Menorca','07740':'Es Mercadal, Menorca','07748':'Fornells, Menorca',
+  '07749':'Es Migjorn Gran, Menorca','07750':'Ferreries, Menorca','07760':'Ciutadella de Menorca',
+  '07769':'Cala en Bosch, Menorca','07800':'Eivissa, Ibiza','07810':'Sant Joan de Labritja, Ibiza',
+  '07811':'Sant Carles de Peralta, Ibiza','07812':'Sant Vicent de sa Cala, Ibiza',
+  '07814':'Sant Joan de Labritja, Ibiza','07816':'Sant Mateu d\'Albarca, Ibiza',
+  '07817':'Sant Agustí des Vedrà, Ibiza','07819':'Sant Antoni de Portmany, Ibiza',
+  '07820':'Sant Antoni de Portmany, Ibiza','07830':'Sant Josep de sa Talaia, Ibiza',
+  '07840':'Santa Eulària des Riu, Ibiza','07849':'Es Canar, Ibiza','07850':'Sant Antoni de Portmany, Ibiza',
+  '07860':'Sant Ferran de ses Roques, Formentera','07870':'La Savina, Formentera',
+  // Madrid
+  '28001':'Retiro, Madrid','28002':'Salamanca, Madrid','28003':'Chamberí, Madrid',
+  '28004':'Centro, Madrid','28005':'La Latina, Madrid','28006':'Salamanca, Madrid',
+  '28007':'Retiro, Madrid','28008':'Moncloa, Madrid','28009':'Retiro, Madrid',
+  '28010':'Chamberí, Madrid','28011':'Carabanchel, Madrid','28012':'Centro, Madrid',
+  '28013':'Centro, Madrid','28014':'Centro, Madrid','28015':'Chamberí, Madrid',
+  '28016':'Hortaleza, Madrid','28017':'Ciudad Lineal, Madrid','28018':'Vallecas, Madrid',
+  '28019':'Carabanchel, Madrid','28020':'Tetuán, Madrid','28021':'Usera, Madrid',
+  '28022':'Hortaleza, Madrid','28023':'Aravaca, Madrid','28024':'Carabanchel, Madrid',
+  '28025':'Carabanchel, Madrid','28026':'Usera, Madrid','28027':'Ciudad Lineal, Madrid',
+  '28028':'Ciudad Lineal, Madrid','28029':'Fuencarral, Madrid','28030':'Moratalaz, Madrid',
+  '28031':'Vallecas, Madrid','28032':'Vallecas, Madrid','28033':'Hortaleza, Madrid',
+  '28034':'Fuencarral, Madrid','28035':'Fuencarral, Madrid','28036':'Fuencarral, Madrid',
+  '28037':'Ciudad Lineal, Madrid','28038':'Vallecas, Madrid','28039':'Fuencarral, Madrid',
+  '28040':'Moncloa, Madrid','28041':'Vallecas, Madrid','28042':'Barajas, Madrid',
+  '28043':'Hortaleza, Madrid','28044':'Latina, Madrid','28045':'Arganzuela, Madrid',
+  '28046':'Salamanca, Madrid','28047':'Latina, Madrid','28048':'Fuencarral, Madrid',
+  '28049':'Moncloa-Aravaca, Madrid','28050':'Hortaleza, Madrid','28051':'Vicálvaro, Madrid',
+  '28052':'Barajas, Madrid','28053':'Vallecas, Madrid','28054':'Vallecas, Madrid',
+  // Barcelona
+  '08001':'Eixample, Barcelona','08002':'Ciutat Vella, Barcelona','08003':'Ciutat Vella, Barcelona',
+  '08004':'Sants-Montjuïc, Barcelona','08005':'Sant Martí, Barcelona','08006':'Gràcia, Barcelona',
+  '08007':'Eixample, Barcelona','08008':'Eixample, Barcelona','08009':'Eixample, Barcelona',
+  '08010':'Eixample, Barcelona','08011':'Eixample, Barcelona','08012':'Gràcia, Barcelona',
+  '08013':'Sant Martí, Barcelona','08014':'Sants-Montjuïc, Barcelona','08015':'Sants, Barcelona',
+  '08016':'Nou Barris, Barcelona','08017':'Sarrià-Sant Gervasi, Barcelona',
+  '08018':'Sant Martí, Barcelona','08019':'Sant Martí, Barcelona','08020':'Sant Martí, Barcelona',
+  '08021':'Sarrià-Sant Gervasi, Barcelona','08022':'Sarrià-Sant Gervasi, Barcelona',
+  '08023':'Sarrià-Sant Gervasi, Barcelona','08024':'Gràcia, Barcelona','08025':'Sant Martí, Barcelona',
+  '08026':'Sant Martí, Barcelona','08027':'Sant Andreu, Barcelona','08028':'Les Corts, Barcelona',
+  '08029':'Les Corts, Barcelona','08030':'Sant Andreu, Barcelona','08031':'Nou Barris, Barcelona',
+  '08032':'Nou Barris, Barcelona','08033':'Sant Andreu, Barcelona','08034':'Les Corts, Barcelona',
+  '08035':'Horta-Guinardó, Barcelona','08036':'Les Corts, Barcelona','08037':'Gràcia, Barcelona',
+  '08038':'Sants-Montjuïc, Barcelona','08039':'Ciutat Vella, Barcelona','08040':'Sants-Montjuïc, Barcelona',
+  '08041':'Horta-Guinardó, Barcelona','08042':'Nou Barris, Barcelona',
+};
+
+// ── SEARCH (no map) ──
+async function doSearch() {
+  const val = document.getElementById('search-input').value.trim();
+  if (!val) return;
+
+  const btn = document.getElementById('search-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading-dots" style="color:#fff"><span></span><span></span><span></span></span>';
+
+  let displayName = val;
+  let subName = 'Spain';
+
+  // Check postcode lookup first
+  const clean = val.replace(/\s/g,'');
+  if (POSTCODE_LOOKUP[clean]) {
+    displayName = POSTCODE_LOOKUP[clean];
+    subName = 'Postcode ' + clean;
+  } else if (/^\d{5}$/.test(clean)) {
+    // Unknown postcode — try Nominatim
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?postalcode=${clean}&country=es&format=json&limit=1&accept-language=en`);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const parts = data[0].display_name.split(',');
+        displayName = parts.slice(0,2).join(',').trim();
+        subName = 'Postcode ' + clean + ' · Spain';
+      } else {
+        displayName = 'Postcode ' + clean;
+        subName = 'Spain';
+      }
+    } catch(e) {
+      displayName = 'Postcode ' + clean;
+    }
+  } else {
+    // Text search — try Nominatim
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val + ', Spain')}&format=json&limit=1&accept-language=en`);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const parts = data[0].display_name.split(',');
+        displayName = parts.slice(0,2).join(',').trim();
+        subName = parts.slice(2,4).join(',').trim() || 'Spain';
+      }
+    } catch(e) {}
+  }
+
+  currentArea = displayName;
+  document.getElementById('area-confirm-name').textContent = displayName;
+  document.getElementById('area-confirm-sub').textContent = subName;
+  document.getElementById('area-confirm').style.display = 'block';
+  document.getElementById('area-confirm').scrollIntoView({behavior:'smooth', block:'nearest'});
+
+  btn.disabled = false;
+  btn.innerHTML = `<span data-t="searchBtn">${t('searchBtn')}</span>`;
+}
+
+function onRegionSelect(val) {
+  if (!val) { document.getElementById('region-confirm').style.display='none'; return; }
+  currentArea = val;
+  document.getElementById('region-confirm-name').textContent = val;
+  document.getElementById('region-confirm').style.display = 'block';
+}
+
+
+
+// ── DISCOUNT ──
+function applyDiscount() {
+  const code = document.getElementById('discount-input').value.trim();
+  const msg = document.getElementById('discount-msg');
+  if (DISCOUNT_CODES[code] !== undefined) {
+    currentDiscountPct = DISCOUNT_CODES[code];
+    msg.className = 'discount-msg success';
+    msg.style.display = 'block';
+    if (currentDiscountPct === 100) {
+      msg.textContent = '✓ 100% discount applied — this one is on us.';
+    } else {
+      msg.textContent = `✓ ${currentDiscountPct}% discount applied.`;
+    }
+    updateModalPrice();
+    toggleCardVisibility();
+  } else {
+    currentDiscountPct = 0;
+    msg.className = 'discount-msg error';
+    msg.style.display = 'block';
+    msg.textContent = 'Invalid discount code.';
+    updateModalPrice();
+    toggleCardVisibility();
+  }
+}
+
+function updateModalPrice() {
+  const basePrice = PRICES[currentProduct] || 0;
+  const finalPrice = currentDiscountPct === 100 ? 0 : Math.round(basePrice * (1 - currentDiscountPct/100));
+  const el = document.getElementById('modal-price-display');
+  if (currentDiscountPct > 0 && currentDiscountPct < 100) {
+    el.innerHTML = `<span class="modal-price-original">€${basePrice}</span>€${finalPrice}`;
+  } else if (currentDiscountPct === 100) {
+    el.innerHTML = `<span class="modal-price-original">€${basePrice}</span>€0 — Free`;
+  } else {
+    el.innerHTML = `€${basePrice}`;
+  }
+  const btn = document.getElementById('pay-btn');
+  btn.textContent = currentDiscountPct === 100 ? `Get report — Free →` : `Pay €${finalPrice} →`;
+}
+
+function toggleCardVisibility() {
+  const wrapper = document.getElementById('card-wrapper');
+  const note = document.getElementById('payment-note');
+  wrapper.style.display = currentDiscountPct === 100 ? 'none' : 'block';
+  note.style.display = currentDiscountPct === 100 ? 'none' : 'block';
+}
+
+// ── MODAL ──
+const productLabels = {
+  neighbourhood: () => ({ type: 'Single area', title: 'Neighbourhood Report', desc: 'Full 6-page analysis — signal breakdown, 5-year trajectory, risk flags, analyst brief.' }),
+  region: () => ({ type: 'Region-wide', title: 'Region Intelligence Report', desc: 'All neighbourhoods ranked, top rising zones, infrastructure pipeline, regional matrix.' }),
+  spain: () => ({ type: 'Spain-wide', title: 'Spain Intelligence Atlas', desc: 'Top 10 rising areas, top 5 to avoid, full regional breakdown, regulatory & climate risk.' }),
+  dossier: () => ({ type: 'Catastro intelligence', title: 'Property Dossier', desc: 'Official Catastro record, registered m², legal status, cadastral value vs asking price.' }),
+  negotiation: () => ({ type: 'Catastro intelligence', title: 'Negotiation Intelligence', desc: 'Days on market, price history, comparable sold prices, AI negotiation brief.' }),
+};
+
+function openModal(product) {
+  currentProduct = product;
+  currentDiscountPct = 0;
+  document.getElementById('discount-input').value = '';
+  document.getElementById('discount-msg').style.display = 'none';
+  const info = productLabels[product]();
+  document.getElementById('modal-type').textContent = info.type;
+  document.getElementById('modal-title').textContent = info.title;
+  document.getElementById('modal-desc').textContent = info.desc + (currentArea ? ` Area: ${currentArea}.` : '');
+  updateModalPrice();
+  document.getElementById('card-wrapper').style.display = 'block';
+  document.getElementById('payment-note').style.display = 'block';
+  document.getElementById('pay-error').style.display = 'none';
+  document.getElementById('modal').classList.add('open');
+  // Mount Stripe card if not already mounted
+  if (!stripeInstance && STRIPE_KEY !== 'pk_test_REPLACE_WITH_YOUR_STRIPE_KEY') {
+    try {
+      stripeInstance = Stripe(STRIPE_KEY);
+      const elements = stripeInstance.elements({ appearance: { theme:'stripe', variables:{ colorPrimary:'#1e5c3a', fontFamily:'DM Sans, sans-serif', borderRadius:'0px' } } });
+      stripeCard = elements.create('card', { style:{ base:{ fontFamily:'DM Sans, sans-serif', fontSize:'14px', color:'#0f1f16', '::placeholder':{ color:'#8fa898' } } } });
+      stripeCard.mount('#card-element');
+    } catch(e) { console.log('Stripe not configured yet'); }
+  }
+}
+
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+// ── PAYMENT ──
+async function processPayment() {
+  const email = document.getElementById('email-input').value.trim();
+  const lang = document.getElementById('lang-select').value;
+  const errEl = document.getElementById('pay-error');
+  const btn = document.getElementById('pay-btn');
+  if (!email.includes('@')) { errEl.textContent='Please enter a valid email address.'; errEl.style.display='block'; return; }
+  errEl.style.display='none';
+  btn.disabled=true;
+  btn.innerHTML='<span class="loading-dots" style="color:#fff"><span></span><span></span><span></span></span>';
+  try {
+    if (currentDiscountPct === 100) {
+      // Free — skip payment, go straight to report
+      await generateReport(currentArea, email, lang, currentProduct);
+      closeModal();
+      document.getElementById('success-email').textContent = email;
+      document.getElementById('success-modal').classList.add('open');
+    } else if (stripeInstance && stripeCard) {
+      const { paymentMethod, error } = await stripeInstance.createPaymentMethod({ type:'card', card:stripeCard, billing_details:{ email } });
+      if (error) { errEl.textContent=error.message; errEl.style.display='block'; btn.disabled=false; updateModalPrice(); return; }
+      await generateReport(currentArea, email, lang, currentProduct);
+      closeModal();
+      document.getElementById('success-email').textContent = email;
+      document.getElementById('success-modal').classList.add('open');
+    } else {
+      // Stripe not configured yet — simulate for testing
+      await generateReport(currentArea, email, lang, currentProduct);
+      closeModal();
+      document.getElementById('success-email').textContent = email;
+      document.getElementById('success-modal').classList.add('open');
+    }
+  } catch(e) {
+    console.error('Payment/report error:', e);
+    errEl.textContent = e.message || 'Something went wrong. Please try again.';
+    errEl.style.display='block';
+  }
+  btn.disabled=false; updateModalPrice();
+}
+
+async function generateReport(area, email, lang, type) {
+  const prompts = {
+    neighbourhood: `Generate a full Neighbourhood Intelligence Report for: ${area}, Spain. Include: Executive Summary, Parcela Future Score™ (0-100) with rationale, signal breakdown across 8 dimensions, 5-year trajectory, key risks, what to watch, comparable areas, and analyst's note. Write in ${lang}.`,
+    region: `Generate a full Region Intelligence Report for: ${area}, Spain. Include: Regional overview, top 5 rising neighbourhoods ranked with scores, top 3 areas to approach with caution, price vs trajectory matrix, international buyer concentration, infrastructure pipeline, climate risk summary. Write in ${lang}.`,
+    spain: `Generate a full Spain Intelligence Atlas. Include: Executive overview, top 10 rising areas Spain-wide, top 5 to avoid, regional analysis (Mallorca, Madrid, Barcelona + wider Spain), value vs trajectory matrix, international buyer concentration, regulatory risk, infrastructure pipeline, climate risk, analyst's conclusion. Write in ${lang}.`,
+    dossier: `Generate a Property Dossier for a property in: ${area}, Spain. Include: Catastro reference summary, registered vs advertised m², legal status assessment, cadastral value vs estimated asking price, flood zone assessment, urban classification. Write in ${lang}.`,
+    negotiation: `Generate a Negotiation Intelligence Report for a property in: ${area}, Spain. Include: Estimated days on market context, price history scenario, owner type assessment, comparable sold prices analysis, distress signal assessment, and AI negotiation brief with suggested opening offer range, leverage points, and red flags. Write in ${lang}.`
+  };
+
+  const response = await fetch('/api/report', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: prompts[type], lang }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Report generation failed');
+
+  const reportText = data.text;
+  console.log('✓ Report generated for', email);
+
+  // Send via EmailJS
+  if (typeof emailjs === 'undefined') {
+    console.error('EmailJS failed to load.');
+    throw new Error('Email service unavailable — please try again.');
+  }
+
+  try {
+    const result = await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      to_email:   email,
+      to_name:    email.split('@')[0],
+      area:       area,
+      product:    type,
+      language:   lang,
+      report:     reportText,
+      date:       new Date().toLocaleDateString('en-GB', {day:'numeric',month:'long',year:'numeric'}),
+    });
+    console.log('✓ Email sent:', result);
+  } catch(emailErr) {
+    console.error('✗ EmailJS error:', emailErr);
+    throw new Error('Email delivery failed: ' + (emailErr.text || emailErr.message || JSON.stringify(emailErr)));
+  }
+
+  return reportText;
+}
+
+// ── AGENCY FORM ──
+function submitAgencyForm() {
+  var name = document.getElementById('agency-name').value.trim();
+  var email = document.getElementById('contact-email').value.trim();
+  if (!name||!email.includes('@')) { alert('Please fill in agency name and a valid email.'); return; }
+  console.log('Agency enquiry:', { name, email, size:document.getElementById('agency-size').value, locations:document.getElementById('agency-locations').value, message:document.getElementById('agency-message').value });
+  document.getElementById('agency-success').classList.add('open');
+}
+
+// ── INIT ──
+document.addEventListener('DOMContentLoaded', function() {
+  // Init EmailJS once
+  if (typeof emailjs !== 'undefined') emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+  document.getElementById('search-input').addEventListener('keydown', function(e){ if(e.key==='Enter') doSearch(); });
+  ['agency-success','success-modal'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.addEventListener('click', function(e){ if(e.target===el) el.classList.remove('open'); });
+  });
+  applyTranslations();
+});
+</script>
+</body>
+</html>
