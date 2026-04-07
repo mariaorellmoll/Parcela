@@ -148,8 +148,12 @@ function parseStreetInput(street, defaultType) {
 // ── MAIN SEARCH FLOW ──────────────────────────────────────────────────────────
 async function searchByStreet({ provName, muniName, sigla, streetName, m2, floor, year_built }) {
 
-  // Step 1: Resolve exact street name via ConsultaVia
-  const exactStreet = await resolveStreetName(provName, muniName, sigla, streetName);
+  // Steps 1+2 in parallel: resolve exact street name AND get RCs simultaneously
+  const [exactStreet, rcListFromInput] = await Promise.all([
+    resolveStreetName(provName, muniName, sigla, streetName),
+    getAllRCsOnStreet(provName, muniName, sigla, streetName),
+  ]);
+
   if (!exactStreet) {
     throw new Error(
       `Street "${sigla} ${streetName}" not found in ${muniName}. ` +
@@ -157,14 +161,18 @@ async function searchByStreet({ provName, muniName, sigla, streetName, m2, floor
     );
   }
 
-  // Step 2: Get all RCs on that street via ConsultaNumero
-  const rcList = await getAllRCsOnStreet(provName, muniName, sigla, exactStreet);
+  // If exact name differs from input and we got no RCs from input, fetch with exact name
+  let rcList = rcListFromInput;
+  if (rcList.length === 0 && exactStreet !== streetName.toUpperCase()) {
+    rcList = await getAllRCsOnStreet(provName, muniName, sigla, exactStreet);
+  }
+
   if (rcList.length === 0) {
     throw new Error(`No properties found on ${sigla} ${exactStreet} in ${muniName}.`);
   }
 
-  // Step 3: Fetch full data for each RC (max 40)
-  const batch = rcList.slice(0, 40);
+  // Step 3: Fetch full data for each RC in parallel (cap at 20 to stay within timeout)
+  const batch = rcList.slice(0, 20);
   const fullData = await Promise.all(
     batch.map(rc => lookupRC(rc).catch(() => null))
   );
