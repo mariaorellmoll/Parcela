@@ -2,11 +2,16 @@
 // Correct approach: use numeric province/municipality codes, not text names
 // Step 1: ConsultaMunicipio → get municipality code from province code + name
 // Step 2: Consulta_DNPLOC_Codigos → search properties by code + street
-// Step 3: Consulta_DNPRC_Codigos for each RC → full property data
+// Step 3: Consulta_DNPRC for each RC → full property data
+// NOTE: Using HTTP (not HTTPS) for Catastro — their SSL cert chain is broken (known issue).
+// All Catastro data is public, no credentials flow through this connection.
 
-const BASE = 'https://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC';
+import http from 'node:http';
+import https from 'node:https';
 
-// Province codes (INE standard)
+const BASE = 'http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC';
+
+// Province codes (INE standard) — name → code
 const PROVINCE_CODES = {
   'alava': '01', 'albacete': '02', 'alicante': '03', 'almeria': '04', 'almería': '04',
   'avila': '05', 'ávila': '05', 'badajoz': '06', 'baleares': '07', 'illes balears': '07',
@@ -21,6 +26,22 @@ const PROVINCE_CODES = {
   'segovia': '40', 'sevilla': '41', 'soria': '42', 'tarragona': '43', 'teruel': '44',
   'toledo': '45', 'valencia': '46', 'valència': '46', 'valladolid': '47', 'vizcaya': '48',
   'zamora': '49', 'zaragoza': '50', 'ceuta': '51', 'melilla': '52',
+};
+
+// Province code → canonical name for Catastro ConsultaMunicipioCodigos
+const PROVINCE_CODE_TO_NAME = {
+  '01': 'ALAVA', '02': 'ALBACETE', '03': 'ALICANTE', '04': 'ALMERIA', '05': 'AVILA',
+  '06': 'BADAJOZ', '07': 'ILLES BALEARS', '08': 'BARCELONA', '09': 'BURGOS',
+  '10': 'CACERES', '11': 'CADIZ', '12': 'CASTELLON', '13': 'CIUDAD REAL',
+  '14': 'CORDOBA', '15': 'LA CORUÑA', '16': 'CUENCA', '17': 'GIRONA', '18': 'GRANADA',
+  '19': 'GUADALAJARA', '20': 'GUIPUZCOA', '21': 'HUELVA', '22': 'HUESCA',
+  '23': 'JAEN', '24': 'LEON', '25': 'LLEIDA', '26': 'LA RIOJA', '27': 'LUGO',
+  '28': 'MADRID', '29': 'MALAGA', '30': 'MURCIA', '31': 'NAVARRA', '32': 'OURENSE',
+  '33': 'ASTURIAS', '34': 'PALENCIA', '35': 'LAS PALMAS', '36': 'PONTEVEDRA',
+  '37': 'SALAMANCA', '38': 'SANTA CRUZ DE TENERIFE', '39': 'CANTABRIA', '40': 'SEGOVIA',
+  '41': 'SEVILLA', '42': 'SORIA', '43': 'TARRAGONA', '44': 'TERUEL', '45': 'TOLEDO',
+  '46': 'VALENCIA', '47': 'VALLADOLID', '48': 'VIZCAYA', '49': 'ZAMORA', '50': 'ZARAGOZA',
+  '51': 'CEUTA', '52': 'MELILLA',
 };
 
 // Well-known municipality names → Catastro internal name
@@ -161,45 +182,59 @@ function getProvinceCode(province, municipality) {
 
 // ── STEP 2: Get municipality code from Catastro ───────────────────────────────
 async function getMunicipalityCode(provCode, muniName) {
-  // Try the normalised name first
+  // ConsultaMunicipioCodigos takes the PROVINCE NAME, not code
+  const provName = PROVINCE_CODE_TO_NAME[provCode] || provCode;
   const normalised = MUNI_NAME_MAP[muniName.toLowerCase().trim()] || muniName.toUpperCase().trim();
 
-  const url = `${BASE}/OVCCallejeroCodigos.asmx/ConsultaMunicipioCodigos` +
-    `?Provincia=${encodeURIComponent(provCode)}&Municipio=${encodeURIComponent(normalised)}`;
+  const tryFetch = async (muni) => {
+    const url = `${BASE}/OVCCallejeroCodigos.asmx/ConsultaMunicipioCodigos` +
+      `?Provincia=${encodeURIComponent(provName)}&Municipio=${encodeURIComponent(muni)}`;
+    const xml = await fetchXML(url);
+    if (!xml) return null;
+    const munis = [...xml.matchAll(/<muni>([\s\S]*?)<\/muni>/gi)];
+    return munis.length > 0 ? munis : null;
+  };
 
-  const xml = await fetchXML(url);
-  if (!xml) throw new Error('Catastro did not respond when looking up municipality code.');
+  // Try normalised name first
+  let munis = await tryFetch(normalised);
 
-  // Parse municipality list — returns <muni> blocks
-  const munis = [...xml.matchAll(/<muni>([\s\S]*?)<\/muni>/gi)];
-  if (munis.length === 0) {
-    // Try without accents
+  // Try without accents
+  if (!munis) {
     const plain = stripAccents(normalised);
-    if (plain !== normalised) {
-      const url2 = `${BASE}/OVCCallejeroCodigos.asmx/ConsultaMunicipioCodigos` +
-        `?Provincia=${encodeURIComponent(provCode)}&Municipio=${encodeURIComponent(plain)}`;
-      const xml2 = await fetchXML(url2);
-      if (xml2) {
-        const munis2 = [...xml2.matchAll(/<muni>([\s\S]*?)<\/muni>/gi)];
-        if (munis2.length > 0) return parseMuniList(munis2, normalised, plain);
-      }
-    }
-    // Try just first word of municipality name
+    if (plain !== normalised) munis = await tryFetch(plain);
+  }
+
+  // Try just first word
+  if (!munis) {
     const firstWord = normalised.split(' ')[0];
-    if (firstWord !== normalised) {
-      const url3 = `${BASE}/OVCCallejeroCodigos.asmx/ConsultaMunicipioCodigos` +
-        `?Provincia=${encodeURIComponent(provCode)}&Municipio=${encodeURIComponent(firstWord)}`;
-      const xml3 = await fetchXML(url3);
-      if (xml3) {
-        const munis3 = [...xml3.matchAll(/<muni>([\s\S]*?)<\/muni>/gi)];
-        if (munis3.length > 0) return parseMuniList(munis3, normalised, firstWord);
-      }
+    if (firstWord !== normalised) munis = await tryFetch(firstWord);
+  }
+
+  // Try empty string to get all municipalities in province (then filter)
+  if (!munis) {
+    const url = `${BASE}/OVCCallejeroCodigos.asmx/ConsultaMunicipioCodigos` +
+      `?Provincia=${encodeURIComponent(provName)}&Municipio=`;
+    const xml = await fetchXML(url);
+    if (!xml) throw new Error(`Catastro did not respond. This may be a temporary outage — please try again in a moment.`);
+    munis = [...xml.matchAll(/<muni>([\s\S]*?)<\/muni>/gi)];
+    if (munis.length === 0) {
+      throw new Error(`Could not find any municipalities for province "${provName}". Check the province field.`);
     }
-    throw new Error(
-      `Municipality "${muniName}" not found in province ${provCode}. ` +
-      `Check the spelling — Catastro uses official Spanish/Catalan names. ` +
-      `Examples: "PALMA", "ARTÀ", "SÓLLER", "EIVISSA", "CALVIÀ".`
-    );
+    // Filter by name similarity
+    const normStripped = stripAccents(normalised);
+    const filtered = munis.filter(m => {
+      const name = m[1].match(/<nm>([^<]+)<\/nm>/i)?.[1]?.trim().toUpperCase() || '';
+      return stripAccents(name).includes(normStripped.split(' ')[0]) ||
+             normStripped.includes(stripAccents(name).split(' ')[0]);
+    });
+    if (filtered.length > 0) munis = filtered;
+    else {
+      throw new Error(
+        `Municipality "${muniName}" not found in ${provName}. ` +
+        `Try the official Catalan/Spanish name. For Mallorca: "PALMA", "ARTÀ", "SÓLLER", "CALVIÀ", "POLLENÇA". ` +
+        `For Ibiza: "EIVISSA", "SANT ANTONI DE PORTMANY", "SANTA EULÀRIA DES RIU".`
+      );
+    }
   }
 
   return parseMuniList(munis, normalised, normalised);
@@ -446,16 +481,56 @@ function friendlyError(code, desc, { municipality, street, sigla }) {
   return map[code] || (desc ? `Catastro: ${desc}` : `Catastro error (code ${code}).`);
 }
 
-async function fetchXML(url) {
-  try {
-    const r = await fetch(url, {
-      headers: { Accept: 'text/xml, application/xml, */*', 'User-Agent': 'Parcela/1.0' },
-      signal: AbortSignal.timeout(12000),
+function fetchXML(url) {
+  // Use Node's http/https modules directly.
+  // Catastro endpoints work on plain HTTP — avoids their broken SSL cert chain.
+  // For any HTTPS calls, we bypass SSL verification scoped to this function only.
+  return new Promise((resolve) => {
+    const urlObj = new URL(url);
+    const lib = urlObj.protocol === 'https:' ? https : http;
+    const options = {
+      hostname: urlObj.hostname,
+      port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
+      path: urlObj.pathname + urlObj.search,
+      method: 'GET',
+      headers: {
+        'Accept': 'text/xml, application/xml, */*',
+        'User-Agent': 'Parcela/1.0',
+        'Connection': 'close',
+      },
+      rejectUnauthorized: false, // scoped: handles broken Catastro SSL cert chain
+      timeout: 12000,
+    };
+
+    const req = lib.request(options, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        // Follow redirect once
+        resolve(fetchXML(res.headers.location));
+        return;
+      }
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(data);
+        } else {
+          console.error('[fetchXML] HTTP', res.statusCode, url.substring(0, 80));
+          resolve(null);
+        }
+      });
     });
-    if (!r.ok) return null;
-    return await r.text();
-  } catch (e) {
-    console.error('[fetchXML]', e.message);
-    return null;
-  }
+
+    req.on('error', (e) => {
+      console.error('[fetchXML] error:', e.message, url.substring(0, 80));
+      resolve(null);
+    });
+    req.on('timeout', () => {
+      console.error('[fetchXML] timeout:', url.substring(0, 80));
+      req.destroy();
+      resolve(null);
+    });
+
+    req.end();
+  });
 }
