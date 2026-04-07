@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "api/catastro.js": {
+      "maxDuration": 30
+    },
+    "api/debug.js": {
+      "maxDuration": 30
+    }
+  }
+}
