@@ -5,20 +5,29 @@ export default async function handler(req, res) {
 
   const results = {};
 
-  results.dnploc_numero_0 = await testUrl(
-    'http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPLOC?Provincia=ILLES%20BALEARS&Municipio=ARTA&Sigla=CL&Calle=CARDENAL%20DESPUIG&Numero=0&Bloque=&Escalera=&Planta=&Puerta='
+  // Test: DNPLOC with empty provincia/municipio — does stripping params help?
+  results.dnploc_no_province = await testUrl(
+    'http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPLOC?Provincia=&Municipio=ARTA&Sigla=CL&Calle=CARDENAL&Numero=12&Bloque=&Escalera=&Planta=&Puerta='
   );
 
-  results.dnploc_numero_12 = await testUrl(
-    'http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPLOC?Provincia=ILLES%20BALEARS&Municipio=ARTA&Sigla=CL&Calle=CARDENAL%20DESPUIG&Numero=12&Bloque=&Escalera=&Planta=&Puerta='
+  // Test: DNPLOC with minimal params
+  results.dnploc_minimal = await testUrl(
+    'http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPLOC?Provincia=&Municipio=&Sigla=CL&Calle=CARDENAL&Numero=12&Bloque=&Escalera=&Planta=&Puerta='
   );
 
-  results.consulta_numero = await testUrl(
-    'http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/ConsultaNumero?Provincia=ILLES%20BALEARS&Municipio=ARTA&TipoVia=CL&NombreVia=CARDENAL%20DESPUIG&Numero=1'
+  // Test: DNPRC with a known RC but adding fake province — does adding params break it?
+  results.rc_with_province = await testUrl(
+    'http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPRC?Provincia=ILLES%20BALEARS&Municipio=ARTA&RC=0138301ED3903N'
   );
 
-  results.consulta_via = await testUrl(
-    'http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/ConsultaVia?Provincia=ILLES%20BALEARS&Municipio=ARTA&TipoVia=CL&NombreVia=CARDENAL'
+  // Test: ConsultaVia with empty province
+  results.via_no_province = await testUrl(
+    'http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/ConsultaVia?Provincia=&Municipio=ARTA&TipoVia=CL&NombreVia=CARDENAL'
+  );
+
+  // Test: ConsultaMunicipio (no codes) — text name version
+  results.consulta_municipio = await testUrl(
+    'http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/ConsultaMunicipio?Provincia=BALEARES&Municipio=ARTA'
   );
 
   res.status(200).json(results);
@@ -39,7 +48,7 @@ function testUrl(url) {
       res.on('end', () => resolve({
         status: res.statusCode,
         length: data.length,
-        preview: data.substring(0, 500),
+        preview: data.substring(0, 400),
         error_code: data.match(/<cuerr>(\d+)<\/cuerr>/i)?.[1] || null,
         error_desc: data.match(/<des>([^<]+)<\/des>/i)?.[1] || null,
         rc_count: (data.match(/<pc1>/gi) || []).length,
