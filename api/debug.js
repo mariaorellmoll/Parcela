@@ -4,21 +4,19 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   const results = {};
 
-  // The text-based endpoints are strict about province name.
-  // Try every plausible variant for Baleares
-  const variants = [
-    'BALEARES', 'ILLES BALEARS', 'BALEARS', 'ISLAS BALEARES', 'IB', '07'
-  ];
-
-  for (const prov of variants) {
-    results[`via_prov_${prov}`] = await testUrl(
-      `http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/ConsultaVia?Provincia=${encodeURIComponent(prov)}&Municipio=ARTA&TipoVia=CL&NombreVia=CARDENAL`
-    );
-  }
-
-  // Also try ConsultaProvincia — get the exact list of valid province names
-  results.consulta_provincia = await testUrl(
+  // Get full province list
+  results.all_provinces = await testUrl(
     'http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/ConsultaProvincia'
+  );
+
+  // Now we know ILLES BALEARS works for ConsultaVia — test DNPLOC with it
+  results.dnploc_illes_balears = await testUrl(
+    'http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPLOC?Provincia=ILLES%20BALEARS&Municipio=ARTA&Sigla=CL&Calle=CARDENAL%20DESPUIG&Numero=12&Bloque=&Escalera=&Planta=&Puerta='
+  );
+
+  // Test ConsultaNumero with ILLES BALEARS — get all numbers on this street
+  results.consulta_numero = await testUrl(
+    'http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/ConsultaNumero?Provincia=ILLES%20BALEARS&Municipio=ARTA&TipoVia=CL&NombreVia=CARDENAL%20DESPUIG&Numero=1'
   );
 
   res.status(200).json(results);
@@ -38,7 +36,8 @@ function testUrl(url) {
       res.on('data', c => data += c);
       res.on('end', () => resolve({
         status: res.statusCode,
-        preview: data.substring(0, 300),
+        length: data.length,
+        preview: data.substring(0, 800),
         error_desc: data.match(/<des>([^<]+)<\/des>/i)?.[1] || null,
         rc_count: (data.match(/<pc1>/gi) || []).length,
       }));
