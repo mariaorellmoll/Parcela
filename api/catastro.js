@@ -90,6 +90,7 @@ export default async function handler(req, res) {
 
   try {
     const provCode = resolveProvinceCode(province, municipality);
+    console.log('[catastro] provCode:', provCode, 'from province:', province, 'municipality:', municipality);
     if (!provCode) {
       return res.status(400).json({
         error: `Could not determine province for "${municipality}". Please fill in the Province field.`
@@ -97,14 +98,15 @@ export default async function handler(req, res) {
     }
     const provName = PROVINCE_NAMES[provCode];
     const muniName = municipality.toUpperCase().trim()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // strip accents for municipality
-
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const { sigla, streetName } = parseStreetInput(street, street_type || 'CL');
+    console.log('[catastro] provName:', provName, 'muniName:', muniName, 'sigla:', sigla, 'streetName:', streetName);
 
     const candidates = await searchByStreet({
       provName, muniName, sigla, streetName,
       m2: parseFloat(m2), floor, year_built,
     });
+    console.log('[catastro] candidates found:', candidates.length);
 
     return res.status(200).json({
       path: 'street',
@@ -112,7 +114,7 @@ export default async function handler(req, res) {
       query: { province: provName, municipality: muniName, street: streetName, street_type: sigla, m2, floor },
     });
   } catch(e) {
-    console.error('[catastro]', e.message);
+    console.error('[catastro] CAUGHT ERROR:', e.message, e.stack);
     return res.status(500).json({ error: e.message });
   }
 }
@@ -153,6 +155,7 @@ async function searchByStreet({ provName, muniName, sigla, streetName, m2, floor
     resolveStreetName(provName, muniName, sigla, streetName),
     getAllRCsOnStreet(provName, muniName, sigla, streetName),
   ]);
+  console.log('[catastro] exactStreet:', exactStreet, 'rcListFromInput:', rcListFromInput.length);
 
   if (!exactStreet) {
     throw new Error(
@@ -328,6 +331,7 @@ function parsePropertyXML(xml, rcFallback) {
 function enc(s) { return encodeURIComponent(s||''); }
 
 function fetchXML(url) {
+  console.log('[fetchXML] calling:', url.substring(0, 100));
   return new Promise((resolve) => {
     const urlObj = new URL(url);
     const req = http.request({
