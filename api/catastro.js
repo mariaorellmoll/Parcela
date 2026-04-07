@@ -1,8 +1,94 @@
 // api/catastro.js
-// Two search paths:
-// A) Direct RC lookup → Consulta_DNPRC (exact)
-// B) Street search → Consulta_DNPLOC (province+municipality+street) → list of RCs
-//    → Consulta_DNPRC for each → filter by m² ±15% → rank → return top 5
+// Correct approach: use numeric province/municipality codes, not text names
+// Step 1: ConsultaMunicipio → get municipality code from province code + name
+// Step 2: Consulta_DNPLOC_Codigos → search properties by code + street
+// Step 3: Consulta_DNPRC_Codigos for each RC → full property data
+
+const BASE = 'https://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC';
+
+// Province codes (INE standard)
+const PROVINCE_CODES = {
+  'alava': '01', 'albacete': '02', 'alicante': '03', 'almeria': '04', 'almería': '04',
+  'avila': '05', 'ávila': '05', 'badajoz': '06', 'baleares': '07', 'illes balears': '07',
+  'balears': '07', 'barcelona': '08', 'burgos': '09', 'caceres': '10', 'cáceres': '10',
+  'cadiz': '11', 'cádiz': '11', 'castellon': '12', 'castellón': '12', 'ciudad real': '13',
+  'cordoba': '14', 'córdoba': '14', 'cuenca': '16', 'girona': '17', 'granada': '18',
+  'guadalajara': '19', 'guipuzcoa': '20', 'huelva': '21', 'huesca': '22', 'jaen': '23',
+  'jaén': '23', 'la rioja': '26', 'las palmas': '35', 'leon': '24', 'león': '24',
+  'lleida': '25', 'lugo': '27', 'madrid': '28', 'malaga': '29', 'málaga': '29',
+  'murcia': '30', 'navarra': '31', 'ourense': '32', 'palencia': '34', 'pontevedra': '36',
+  'salamanca': '37', 'santa cruz de tenerife': '38', 'tenerife': '38', 'cantabria': '39',
+  'segovia': '40', 'sevilla': '41', 'soria': '42', 'tarragona': '43', 'teruel': '44',
+  'toledo': '45', 'valencia': '46', 'valència': '46', 'valladolid': '47', 'vizcaya': '48',
+  'zamora': '49', 'zaragoza': '50', 'ceuta': '51', 'melilla': '52',
+};
+
+// Well-known municipality names → Catastro internal name
+// Catastro uses uppercase Spanish/Catalan names
+const MUNI_NAME_MAP = {
+  'palma': 'PALMA',
+  'palma de mallorca': 'PALMA',
+  'arta': 'ARTÀ',
+  'artà': 'ARTÀ',
+  'soller': 'SÓLLER',
+  'sóller': 'SÓLLER',
+  'ibiza': 'EIVISSA',
+  'eivissa': 'EIVISSA',
+  'sant antoni': 'SANT ANTONI DE PORTMANY',
+  'sant antoni de portmany': 'SANT ANTONI DE PORTMANY',
+  'santa eulalia': 'SANTA EULÀRIA DES RIU',
+  'santa eularia': 'SANTA EULÀRIA DES RIU',
+  'santa eularia des riu': 'SANTA EULÀRIA DES RIU',
+  'santa eulària des riu': 'SANTA EULÀRIA DES RIU',
+  'pollensa': 'POLLENÇA',
+  'pollença': 'POLLENÇA',
+  'pollenca': 'POLLENÇA',
+  'alcudia': 'ALCÚDIA',
+  'alcúdia': 'ALCÚDIA',
+  'calvià': 'CALVIÀ',
+  'calvia': 'CALVIÀ',
+  'manacor': 'MANACOR',
+  'inca': 'INCA',
+  'llucmajor': 'LLUCMAJOR',
+  'felanitx': 'FELANITX',
+  'santanyi': 'SANTANYÍ',
+  'santanyí': 'SANTANYÍ',
+  'andratx': 'ANDRATX',
+  'capdepera': 'CAPDEPERA',
+  'campos': 'CAMPOS',
+  'sa pobla': 'SA POBLA',
+  'muro': 'MURO',
+  'petra': 'PETRA',
+  'sineu': 'SINEU',
+  'formentera': 'FORMENTERA',
+  'madrid': 'MADRID',
+  'barcelona': 'BARCELONA',
+  'sevilla': 'SEVILLA',
+  'seville': 'SEVILLA',
+  'malaga': 'MÁLAGA',
+  'málaga': 'MÁLAGA',
+  'marbella': 'MARBELLA',
+  'granada': 'GRANADA',
+  'valencia': 'VALÈNCIA',
+  'valència': 'VALÈNCIA',
+  'alicante': 'ALICANTE/ALACANT',
+  'benidorm': 'BENIDORM',
+  'torrevieja': 'TORREVIEJA',
+};
+
+// Street type prefixes to auto-detect
+const STREET_PREFIXES = [
+  [/^(AVENIDA|AVDA\.?|AV\.)\s+/i, 'AV'],
+  [/^(CALLE|CARRER|CL\.)\s+/i,    'CL'],
+  [/^(PLAZA|PLAÇA|PL\.?|PZA\.?)\s+/i, 'PZ'],
+  [/^(PASEO|PASSEIG|PS\.)\s+/i,   'PS'],
+  [/^(CARRETERA|CTRA\.?|CR\.)\s+/i, 'CR'],
+  [/^(RONDA|RD\.)\s+/i,            'RD'],
+  [/^(CAMINO|CAMI|CM\.)\s+/i,      'CM'],
+  [/^(GRAN VIA|GRAN VÍA)\s+/i,     'GV'],
+  [/^(TRAVESIA|TRAVESÍA|TV\.)\s+/i,'TV'],
+  [/^(URBANIZACION|URBANITZACIÓ|UR\.)\s+/i, 'UR'],
+];
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -11,393 +97,365 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { rc, province, municipality, street, street_type, floor, door, m2, year_built } = req.body || {};
+  const { rc, province, municipality, street, street_type, floor, m2, year_built } = req.body || {};
 
-  // ── PATH A: Direct RC lookup ──────────────────────────────────────────────
-  if (rc && rc.replace(/\s/g,'').length >= 14) {
+  // ── PATH A: Direct RC ─────────────────────────────────────────────────────
+  if (rc && rc.replace(/\s/g, '').length >= 14) {
     try {
-      const clean = rc.replace(/\s/g,'').toUpperCase();
-      const result = await lookupRC(clean);
-      if (!result) return res.status(404).json({ error: `No property found for RC: ${clean}` });
+      const clean = rc.replace(/\s/g, '').toUpperCase();
+      const result = await lookupByRC(clean);
+      if (!result) return res.status(404).json({ error: `No Catastro record found for RC: ${clean}` });
       return res.status(200).json({ path: 'rc_direct', candidates: [result], query: { rc: clean } });
-    } catch(e) {
+    } catch (e) {
       return res.status(500).json({ error: e.message });
     }
   }
 
-  // ── PATH B: Street/neighbourhood search ──────────────────────────────────
-  if (!municipality) {
-    return res.status(400).json({ error: 'Municipality is required for neighbourhood search.' });
-  }
-  if (!m2) {
-    return res.status(400).json({ error: 'Built area (m²) is required — it is the primary matching signal.' });
-  }
+  // ── PATH B: Municipality + street search ──────────────────────────────────
+  if (!municipality) return res.status(400).json({ error: 'Municipality name is required.' });
+  if (!m2) return res.status(400).json({ error: 'Built area (m²) is required.' });
 
   try {
-    // Normalise street: auto-detect type if embedded in name (e.g. "Avenida Mèxic" → type=AV, name="Mèxic")
-    const { sigla, calle } = normaliseStreet(street, street_type);
-
-    // Normalise municipality name to Catastro's format, try variants on failure
-    const candidates = await streetSearchWithRetry({
-      province, municipality, street: calle, street_type: sigla, floor, door,
-      m2: parseFloat(m2), year_built
+    const { sigla, calle } = detectStreetType(street || '', street_type || 'CL');
+    const candidates = await searchByMunicipality({
+      province, municipality, sigla, calle, floor,
+      m2: parseFloat(m2), year_built,
     });
-    return res.status(200).json({ path: 'street', candidates, query: { province, municipality, street: calle, street_type: sigla, m2, floor, year_built } });
-  } catch(e) {
-    console.error('catastro street search error:', e.message);
+    return res.status(200).json({
+      path: 'street',
+      candidates,
+      query: { municipality, street: calle, street_type: sigla, m2, floor },
+    });
+  } catch (e) {
+    console.error('[catastro]', e.message);
     return res.status(500).json({ error: e.message });
   }
 }
 
-// ── MUNICIPALITY NAME NORMALISER ──────────────────────────────────────────────
-// Catastro uses its own internal names — often shorter than what people type.
-// We try the user's input first, then fall back through known variants.
-const MUNI_VARIANTS = {
-  'palma de mallorca': ['PALMA', 'PALMA DE MALLORCA'],
-  'palma':             ['PALMA', 'PALMA DE MALLORCA'],
-  'barcelona':         ['BARCELONA'],
-  'madrid':            ['MADRID'],
-  'ibiza':             ['EIVISSA', 'IBIZA'],
-  'eivissa':           ['EIVISSA', 'IBIZA'],
-  'sant antoni de portmany': ['SANT ANTONI DE PORTMANY', 'SANT ANTONI'],
-  'santa eularia des riu':   ['SANTA EULARIA DES RIU', 'SANTA EULALIA DEL RIO'],
-  'santa eulalia':           ['SANTA EULARIA DES RIU', 'SANTA EULALIA DEL RIO'],
-  'soller':            ['SOLLER', 'SÓLLER'],
-  'sóller':            ['SOLLER', 'SÓLLER'],
-  'pollenca':          ['POLLENCA', 'POLLENÇA'],
-  'pollença':          ['POLLENÇA', 'POLLENCA'],
-  'alcudia':           ['ALCUDIA', 'ALCÚDIA'],
-  'alcúdia':           ['ALCÚDIA', 'ALCUDIA'],
-  'arta':              ['ARTA', 'ARTÀ'],
-  'artà':              ['ARTÀ', 'ARTA'],
-  'manacor':           ['MANACOR'],
-  'inca':              ['INCA'],
-  'llucmajor':         ['LLUCMAJOR'],
-  'felanitx':          ['FELANITX'],
-  'calvia':            ['CALVIA', 'CALVIÀ'],
-  'calvià':            ['CALVIÀ', 'CALVIA'],
-  'andratx':           ['ANDRATX'],
-  'campos':            ['CAMPOS'],
-  'santanyi':          ['SANTANYI', 'SANTANYÍ'],
-  'santanyí':          ['SANTANYÍ', 'SANTANYI'],
-  'valencia':          ['VALENCIA', 'VALÈNCIA'],
-  'seville':           ['SEVILLA'],
-  'sevilla':           ['SEVILLA'],
-  'malaga':            ['MALAGA', 'MÁLAGA'],
-  'málaga':            ['MÁLAGA', 'MALAGA'],
-  'marbella':          ['MARBELLA'],
-  'fuengirola':        ['FUENGIROLA'],
-  'torremolinos':      ['TORREMOLINOS'],
-  'granada':           ['GRANADA'],
-  'alicante':          ['ALICANTE', 'ALACANT'],
-  'benidorm':          ['BENIDORM'],
-  'tenerife':          ['SANTA CRUZ DE TENERIFE'],
-  'las palmas':        ['LAS PALMAS DE GRAN CANARIA'],
-};
-
-function getMuniVariants(municipality) {
-  const key = municipality.toLowerCase().trim();
-  const known = MUNI_VARIANTS[key];
-  if (known) return known;
-  // Always try: as-is uppercase, then without accents
-  const upper = municipality.toUpperCase().trim();
-  const noAccent = upper
-    .replace(/Á/g,'A').replace(/É/g,'E').replace(/Í/g,'I')
-    .replace(/Ó/g,'O').replace(/Ú/g,'U').replace(/Ü/g,'U')
-    .replace(/À/g,'A').replace(/È/g,'E').replace(/Ì/g,'I')
-    .replace(/Ò/g,'O').replace(/Ù/g,'U').replace(/Ï/g,'I')
-    .replace(/Ñ/g,'N').replace(/Ç/g,'C').replace(/·/g,'');
-  const variants = [upper];
-  if (noAccent !== upper) variants.push(noAccent);
-  // Also try without "de", "del", "de la" suffixes
-  const stripped = upper.replace(/ DE (LA |LOS |LAS |EL )?/g, ' ').trim();
-  if (stripped !== upper) variants.push(stripped);
-  return [...new Set(variants)];
-}
-
-// ── STREET TYPE AUTO-DETECTOR ─────────────────────────────────────────────────
-// If user types "Avenida Mèxic" in street name, extract type=AV, name="Mèxic"
-const STREET_PREFIXES = [
-  { prefix: /^(AV\.|AVDA\.?|AVENIDA)\s+/i, sigla: 'AV' },
-  { prefix: /^(CL\.?|CALLE|CARRER)\s+/i,   sigla: 'CL' },
-  { prefix: /^(PL\.?|PLAZA|PLAÇA)\s+/i,     sigla: 'PZ' },
-  { prefix: /^(PS\.?|PASEO|PASSEIG)\s+/i,   sigla: 'PS' },
-  { prefix: /^(CR\.?|CARRETERA)\s+/i,        sigla: 'CR' },
-  { prefix: /^(RD\.?|RONDA)\s+/i,            sigla: 'RD' },
-  { prefix: /^(TV\.?|TRAVESIA|TRAVESÍA)\s+/i, sigla: 'TV' },
-  { prefix: /^(CM\.?|CAMINO|CAMI)\s+/i,      sigla: 'CM' },
-  { prefix: /^(UR\.?|URBANIZACION|URBANIZACIÓN)\s+/i, sigla: 'UR' },
-  { prefix: /^(GV\.?|GRAN VIA|GRAN VÍA)\s+/i, sigla: 'GV' },
-];
-
-function normaliseStreet(street, street_type) {
-  if (!street) return { sigla: street_type || 'CL', calle: '' };
-
-  for (const { prefix, sigla } of STREET_PREFIXES) {
-    if (prefix.test(street)) {
-      const calle = street.replace(prefix, '').trim();
-      return { sigla, calle };
+// ── STEP 1: Resolve province code ────────────────────────────────────────────
+function getProvinceCode(province, municipality) {
+  if (province) {
+    const key = province.toLowerCase().trim();
+    if (PROVINCE_CODES[key]) return PROVINCE_CODES[key];
+    // Try partial match
+    for (const [k, v] of Object.entries(PROVINCE_CODES)) {
+      if (key.includes(k) || k.includes(key)) return v;
     }
   }
-  // No prefix detected — use the selected street_type
-  return { sigla: street_type || 'CL', calle: street.trim() };
+  // Infer from municipality for well-known cases
+  const muniKey = municipality.toLowerCase().trim();
+  const balearicMunis = ['palma','artà','arta','sóller','soller','eivissa','ibiza',
+    'sant antoni','formentera','pollença','pollenca','alcúdia','alcudia','calvià',
+    'calvia','manacor','inca','llucmajor','felanitx','santanyí','santanyi',
+    'andratx','capdepera','campos','sa pobla','muro','petra','sineu'];
+  if (balearicMunis.some(m => muniKey.includes(m) || m.includes(muniKey))) return '07';
+  if (muniKey.includes('madrid')) return '28';
+  if (muniKey.includes('barcelona')) return '08';
+  if (muniKey.includes('sevilla') || muniKey.includes('seville')) return '41';
+  if (muniKey.includes('malaga') || muniKey.includes('málaga')) return '29';
+  if (muniKey.includes('valencia') || muniKey.includes('valència')) return '46';
+  if (muniKey.includes('granada')) return '18';
+  if (muniKey.includes('alicante')) return '03';
+  return null; // unknown — will try without province code
 }
 
-// ── STREET SEARCH WITH MUNICIPALITY RETRY ────────────────────────────────────
-async function streetSearchWithRetry(params) {
-  const variants = getMuniVariants(params.municipality);
+// ── STEP 2: Get municipality code from Catastro ───────────────────────────────
+async function getMunicipalityCode(provCode, muniName) {
+  // Try the normalised name first
+  const normalised = MUNI_NAME_MAP[muniName.toLowerCase().trim()] || muniName.toUpperCase().trim();
 
-  let lastError = null;
-  for (const muniVariant of variants) {
-    try {
-      const result = await streetSearch({ ...params, municipality: muniVariant });
-      return result;
-    } catch(e) {
-      lastError = e;
-      // Only retry on municipality-not-found errors
-      if (!e.message.includes('not found') && !e.message.includes('no encontrado') && !e.message.includes('error 1') && !e.message.includes('(code 1)')) {
-        throw e; // Non-municipality error — don't retry
+  const url = `${BASE}/OVCCallejeroCodigos.asmx/ConsultaMunicipioCodigos` +
+    `?Provincia=${encodeURIComponent(provCode)}&Municipio=${encodeURIComponent(normalised)}`;
+
+  const xml = await fetchXML(url);
+  if (!xml) throw new Error('Catastro did not respond when looking up municipality code.');
+
+  // Parse municipality list — returns <muni> blocks
+  const munis = [...xml.matchAll(/<muni>([\s\S]*?)<\/muni>/gi)];
+  if (munis.length === 0) {
+    // Try without accents
+    const plain = stripAccents(normalised);
+    if (plain !== normalised) {
+      const url2 = `${BASE}/OVCCallejeroCodigos.asmx/ConsultaMunicipioCodigos` +
+        `?Provincia=${encodeURIComponent(provCode)}&Municipio=${encodeURIComponent(plain)}`;
+      const xml2 = await fetchXML(url2);
+      if (xml2) {
+        const munis2 = [...xml2.matchAll(/<muni>([\s\S]*?)<\/muni>/gi)];
+        if (munis2.length > 0) return parseMuniList(munis2, normalised, plain);
       }
-      console.log(`Municipality "${muniVariant}" failed, trying next variant...`);
     }
+    // Try just first word of municipality name
+    const firstWord = normalised.split(' ')[0];
+    if (firstWord !== normalised) {
+      const url3 = `${BASE}/OVCCallejeroCodigos.asmx/ConsultaMunicipioCodigos` +
+        `?Provincia=${encodeURIComponent(provCode)}&Municipio=${encodeURIComponent(firstWord)}`;
+      const xml3 = await fetchXML(url3);
+      if (xml3) {
+        const munis3 = [...xml3.matchAll(/<muni>([\s\S]*?)<\/muni>/gi)];
+        if (munis3.length > 0) return parseMuniList(munis3, normalised, firstWord);
+      }
+    }
+    throw new Error(
+      `Municipality "${muniName}" not found in province ${provCode}. ` +
+      `Check the spelling — Catastro uses official Spanish/Catalan names. ` +
+      `Examples: "PALMA", "ARTÀ", "SÓLLER", "EIVISSA", "CALVIÀ".`
+    );
   }
 
-  // All variants failed — give helpful message
-  const tried = variants.join('", "');
-  throw new Error(
-    `Municipality not found in Catastro. Tried: "${tried}".\n\n` +
-    `Tips:\n` +
-    `— Use the official Spanish name (e.g. "Palma" not "Palma de Mallorca")\n` +
-    `— Balearic towns often use Catalan names (e.g. "Eivissa" not "Ibiza", "Sóller" not "Soller")\n` +
-    `— The Basque Country and Navarre have separate registries not covered by Catastro`
-  );
+  return parseMuniList(munis, normalised, normalised);
 }
 
-// ── STREET SEARCH ─────────────────────────────────────────────────────────────
-async function streetSearch({ province, municipality, street, street_type, floor, door, m2, year_built }) {
-  const sigla = street_type || 'CL';
-  const calle = street || '';
-  const prov  = province || '';
-  const muni  = municipality;
+function parseMuniList(munis, originalName, query) {
+  // If only one result, use it
+  if (munis.length === 1) {
+    const block = munis[0][1];
+    const code = block.match(/<cm>([^<]+)<\/cm>/i)?.[1]?.trim();
+    const name = block.match(/<nm>([^<]+)<\/nm>/i)?.[1]?.trim();
+    if (code) return { code, name: name || originalName };
+  }
+  // Multiple results — find best match
+  const queryUpper = query.toUpperCase();
+  for (const m of munis) {
+    const block = m[1];
+    const code = block.match(/<cm>([^<]+)<\/cm>/i)?.[1]?.trim();
+    const name = block.match(/<nm>([^<]+)<\/nm>/i)?.[1]?.trim() || '';
+    if (name.toUpperCase() === queryUpper || stripAccents(name).toUpperCase() === stripAccents(queryUpper)) {
+      return { code, name };
+    }
+  }
+  // Take first match
+  const block = munis[0][1];
+  const code = block.match(/<cm>([^<]+)<\/cm>/i)?.[1]?.trim();
+  const name = block.match(/<nm>([^<]+)<\/nm>/i)?.[1]?.trim();
+  return { code, name: name || originalName };
+}
 
-  // Step 1: Get list of RCs matching the street in this municipality
-  const listUrl = `https://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPLOC` +
-    `?Provincia=${encodeURIComponent(prov)}` +
-    `&Municipio=${encodeURIComponent(muni)}` +
+// ── STEP 3: Search properties by code ────────────────────────────────────────
+async function searchByMunicipality({ province, municipality, sigla, calle, floor, m2, year_built }) {
+  const provCode = getProvinceCode(province, municipality);
+  if (!provCode) {
+    throw new Error(
+      `Could not determine province for "${municipality}". ` +
+      `Please fill in the Province field (e.g. "Baleares", "Madrid", "Barcelona").`
+    );
+  }
+
+  // Get municipality code
+  const muniInfo = await getMunicipalityCode(provCode, municipality);
+  const { code: muniCode, name: muniName } = muniInfo;
+
+  // Search properties using codes
+  const url = `${BASE}/OVCCallejeroCodigos.asmx/Consulta_DNPLOC_Codigos` +
+    `?CodigoProvincia=${encodeURIComponent(provCode)}` +
+    `&CodigoMunicipio=${encodeURIComponent(muniCode)}` +
+    `&CodigoMunicipioINE=` +
     `&Sigla=${encodeURIComponent(sigla)}` +
     `&Calle=${encodeURIComponent(calle)}` +
     `&Numero=` +
     `&Bloque=` +
     `&Escalera=` +
     `&Planta=${encodeURIComponent(floor || '')}` +
-    `&Puerta=${encodeURIComponent(door || '')}`;
+    `&Puerta=`;
 
-  const listXml = await fetchXML(listUrl);
-  if (!listXml) {
-    throw new Error(`Catastro did not respond. Check your internet connection and try again.`);
-  }
+  const xml = await fetchXML(url);
+  if (!xml) throw new Error('Catastro did not respond. Try again in a moment.');
 
-  // Check for Catastro error codes
-  const errCode = listXml.match(/<cuerr>(\d+)<\/cuerr>/i)?.[1];
-  const errDesc = listXml.match(/<des>([^<]+)<\/des>/i)?.[1];
+  // Check error codes
+  const errCode = xml.match(/<cuerr>(\d+)<\/cuerr>/i)?.[1];
+  const errDesc = xml.match(/<des>([^<]+)<\/des>/i)?.[1];
   if (errCode && errCode !== '0') {
-    throw new Error(catastroError(errCode, errDesc, { municipality: muni, street: calle }));
+    throw new Error(friendlyError(errCode, errDesc, { municipality: muniName, street: calle, sigla }));
   }
 
-  // Parse the list — may return a list of inmuebles or a single property directly
-  const rcList = parseRCList(listXml);
+  // Parse RC list
+  const rcList = extractRCs(xml);
 
+  // If no list returned, might be a single direct property response
   if (rcList.length === 0) {
-    // Single property response — parse directly
-    const single = parseProperty(listXml, null);
-    if (single?.rc) return [{ ...single, matchScore: 100 }];
-    throw new Error(`No properties found in "${muni}"${calle ? ` on "${sigla} ${calle}"` : ''}. Try a different street name or leave it blank.`);
+    const single = parsePropertyXML(xml, null);
+    if (single?.rc) return [{ ...single, matchScore: 95 }];
+    throw new Error(
+      `No properties found on "${sigla} ${calle}" in ${muniName}. ` +
+      `Try leaving the street blank to search the whole municipality, ` +
+      `or check the street name spelling.`
+    );
   }
 
   if (rcList.length > 500) {
-    throw new Error(`Too many results (${rcList.length} properties in "${muni}"). Add a street name to narrow the search.`);
+    throw new Error(
+      `${rcList.length} properties found in ${muniName} — too many to process. ` +
+      `Add a street name to narrow down the search.`
+    );
   }
 
-  // Step 2: Fetch full data for each RC in parallel (max 30 at a time to avoid timeouts)
+  // Fetch full data for top 30 RCs in parallel
   const batch = rcList.slice(0, 30);
   const fullData = await Promise.all(
-    batch.map(async (item) => {
-      try { return await lookupRC(item.rc); }
-      catch { return null; }
-    })
+    batch.map(rc => lookupByRC(rc).catch(() => null))
   );
-
   const valid = fullData.filter(Boolean);
+
   if (valid.length === 0) {
-    throw new Error(`Found ${rcList.length} properties but could not fetch their details. Try again shortly — Catastro may be slow.`);
+    throw new Error('Found properties but could not fetch details. Catastro may be slow — please try again.');
   }
 
-  // Step 3: Filter by m² (±15%) and score
-  const m2Tol = 0.15;
-  const m2Min = m2 * (1 - m2Tol);
-  const m2Max = m2 * (1 + m2Tol);
+  // Filter and score by m²
+  const m2Min = m2 * 0.85;
+  const m2Max = m2 * 1.15;
 
-  const scored = valid
-    .filter(p => {
-      const bm2 = p?.cadastralData?.builtAreaM2;
-      if (bm2 && (bm2 < m2Min || bm2 > m2Max)) return false;
-      return true;
-    })
-    .map(p => {
-      const bm2 = p?.cadastralData?.builtAreaM2;
-      const yr  = p?.cadastralData?.yearBuilt;
-      let score = 70;
+  let matched = valid.filter(p => {
+    const bm2 = p.cadastralData?.builtAreaM2;
+    return !bm2 || (bm2 >= m2Min && bm2 <= m2Max);
+  });
 
-      if (bm2) {
-        const diff = Math.abs(bm2 - m2) / m2;
-        score += Math.round((1 - diff) * 30);
-      }
-      if (year_built && yr) {
-        const diff = Math.abs(yr - parseInt(year_built));
-        if (diff === 0) score += 10;
-        else if (diff <= 2) score += 7;
-        else if (diff <= 5) score += 3;
-      }
-      if (floor && p?.addressComponents?.floor) {
-        const pf = p.addressComponents.floor.toString().toLowerCase();
-        const qf = floor.toString().toLowerCase();
-        if (pf === qf || pf.includes(qf) || qf.includes(pf)) score += 5;
-      }
-      return { ...p, matchScore: Math.min(100, score) };
-    });
+  // If nothing in tolerance, return closest ones anyway
+  if (matched.length === 0) matched = valid;
+
+  const scored = matched.map(p => {
+    const bm2 = p.cadastralData?.builtAreaM2;
+    const yr = p.cadastralData?.yearBuilt;
+    let score = 70;
+    if (bm2) score += Math.round((1 - Math.abs(bm2 - m2) / m2) * 25);
+    if (year_built && yr) {
+      const d = Math.abs(yr - parseInt(year_built));
+      score += d === 0 ? 10 : d <= 2 ? 7 : d <= 5 ? 3 : 0;
+    }
+    if (floor && p.addressComponents?.floor) {
+      const pf = String(p.addressComponents.floor).toLowerCase();
+      const qf = String(floor).toLowerCase();
+      if (pf === qf || pf.includes(qf) || qf.includes(pf)) score += 5;
+    }
+    return { ...p, matchScore: Math.min(100, Math.max(0, score)) };
+  });
 
   scored.sort((a, b) => b.matchScore - a.matchScore);
-
-  // If nothing matched within m² tolerance, return top 5 of what we have anyway
-  // with a note that m² didn't match — better than empty results
-  if (scored.length === 0) {
-    const fallback = valid.slice(0, 5).map(p => ({ ...p, matchScore: 50, m2MatchNote: 'outside_tolerance' }));
-    return fallback;
-  }
-
   return scored.slice(0, 5);
 }
 
-// ── PARSE RC LIST FROM Consulta_DNPLOC response ───────────────────────────────
-function parseRCList(xml) {
-  const results = [];
-
-  const inmuebles = [...xml.matchAll(/<inmueble>([\s\S]*?)<\/inmueble>/gi)];
-  inmuebles.forEach(m => {
-    const block = m[1];
-    const pc1 = block.match(/<pc1>([^<]+)<\/pc1>/i)?.[1]?.trim();
-    const pc2 = block.match(/<pc2>([^<]+)<\/pc2>/i)?.[1]?.trim();
-    if (pc1 && pc2) { results.push({ rc: (pc1 + pc2).toUpperCase() }); return; }
-    const rc = block.match(/<rc>([^<]+)<\/rc>/i)?.[1]?.trim();
-    if (rc) results.push({ rc: rc.toUpperCase() });
-  });
-
-  if (results.length === 0) {
-    const bicos = [...xml.matchAll(/<bico>([\s\S]*?)<\/bico>/gi)];
-    bicos.forEach(m => {
-      const block = m[1];
-      const pc1 = block.match(/<pc1>([^<]+)<\/pc1>/i)?.[1]?.trim();
-      const pc2 = block.match(/<pc2>([^<]+)<\/pc2>/i)?.[1]?.trim();
-      if (pc1 && pc2) results.push({ rc: (pc1 + pc2).toUpperCase() });
-    });
-  }
-
-  return results;
+// ── RC LOOKUP ────────────────────────────────────────────────────────────────
+async function lookupByRC(rc) {
+  const url = `${BASE}/OVCCallejero.asmx/Consulta_DNPRC?Provincia=&Municipio=&RC=${encodeURIComponent(rc)}`;
+  const xml = await fetchXML(url);
+  if (!xml) return null;
+  return parsePropertyXML(xml, rc);
 }
 
-// ── PARSE SINGLE PROPERTY from Consulta_DNPRC response ───────────────────────
-function parseProperty(xml, rcFallback) {
+// ── EXTRACT RC LIST FROM XML ──────────────────────────────────────────────────
+function extractRCs(xml) {
+  const rcs = [];
+  // Try <inmueble> blocks
+  for (const m of xml.matchAll(/<inmueble>([\s\S]*?)<\/inmueble>/gi)) {
+    const b = m[1];
+    const pc1 = b.match(/<pc1>([^<]+)<\/pc1>/i)?.[1]?.trim();
+    const pc2 = b.match(/<pc2>([^<]+)<\/pc2>/i)?.[1]?.trim();
+    if (pc1 && pc2) { rcs.push((pc1 + pc2).toUpperCase()); continue; }
+    const rc = b.match(/<rc>([^<]+)<\/rc>/i)?.[1]?.trim();
+    if (rc) rcs.push(rc.toUpperCase());
+  }
+  if (rcs.length > 0) return rcs;
+  // Try <bico> blocks
+  for (const m of xml.matchAll(/<bico>([\s\S]*?)<\/bico>/gi)) {
+    const b = m[1];
+    const pc1 = b.match(/<pc1>([^<]+)<\/pc1>/i)?.[1]?.trim();
+    const pc2 = b.match(/<pc2>([^<]+)<\/pc2>/i)?.[1]?.trim();
+    if (pc1 && pc2) rcs.push((pc1 + pc2).toUpperCase());
+  }
+  return rcs;
+}
+
+// ── PARSE PROPERTY XML ────────────────────────────────────────────────────────
+function parsePropertyXML(xml, rcFallback) {
   if (!xml) return null;
   const errCode = xml.match(/<cuerr>(\d+)<\/cuerr>/i)?.[1];
   if (errCode && errCode !== '0') return null;
 
-  const get = (tag) => xml.match(new RegExp(`<${tag}>([^<]*)<\/${tag}>`, 'i'))?.[1]?.trim() || null;
+  const g = tag => xml.match(new RegExp(`<${tag}>([^<]*)<\/${tag}>`, 'i'))?.[1]?.trim() || null;
 
-  const pc1 = get('pc1'); const pc2 = get('pc2');
-  const rc = pc1 && pc2 ? (pc1 + pc2).toUpperCase() : (get('rc') || rcFallback || '').toUpperCase();
+  const pc1 = g('pc1'); const pc2 = g('pc2');
+  const rc = pc1 && pc2 ? (pc1 + pc2).toUpperCase() : (g('rc') || rcFallback || '').toUpperCase();
   if (!rc) return null;
 
-  const tv = get('tv') || ''; const nv = get('nv') || '';
-  const pnp = get('pnp') || ''; const bq = get('bq') || '';
-  const es = get('es') || ''; const pt = get('pt') || '';
-  const pu = get('pu') || ''; const muni = get('nm') || get('municipio') || '';
-  const prov = get('np') || get('provincia') || '';
-  const cp = get('dp') || get('cp') || '';
+  const tv = g('tv') || ''; const nv = g('nv') || '';
+  const pnp = g('pnp') || ''; const bq = g('bq') || '';
+  const es = g('es') || ''; const pt = g('pt') || ''; const pu = g('pu') || '';
+  const muni = g('nm') || g('municipio') || '';
+  const prov = g('np') || g('provincia') || '';
+  const cp = g('dp') || g('cp') || '';
 
-  const streetStr = [tv, nv].filter(Boolean).join(' ');
-  const detailStr = [
-    pnp ? `nº ${pnp}` : '', bq ? `Bloque ${bq}` : '',
-    es ? `Esc. ${es}` : '', pt ? `Planta ${pt}` : '', pu ? `Pta. ${pu}` : '',
+  const addressParts = [
+    [tv, nv].filter(Boolean).join(' '),
+    pnp ? `nº ${pnp}` : '',
+    bq ? `Bloque ${bq}` : '',
+    es ? `Esc. ${es}` : '',
+    pt ? `Planta ${pt}` : '',
+    pu ? `Pta. ${pu}` : '',
   ].filter(Boolean).join(', ');
-  const address = [streetStr, detailStr, cp, muni, prov].filter(Boolean).join(', ');
+  const address = [addressParts, cp, muni, prov].filter(Boolean).join(', ');
 
-  const uso = get('luso') || get('uso') || null;
-  const sfc = get('sfc') ? parseFloat(get('sfc')) : null;
-  const stl = get('stl') ? parseFloat(get('stl')) : null;
-  const ant = get('ant') ? parseInt(get('ant')) : null;
-  const vv  = get('vv')  ? parseFloat(get('vv'))  : null;
-  const npr = get('npr') ? parseInt(get('npr'))   : null;
+  const uso = g('luso') || g('uso');
+  const sfc = g('sfc') ? parseFloat(g('sfc')) : null;
+  const stl = g('stl') ? parseFloat(g('stl')) : null;
+  const ant = g('ant') ? parseInt(g('ant')) : null;
+  const vv  = g('vv')  ? parseFloat(g('vv')) : null;
+  const npr = g('npr') ? parseInt(g('npr'))  : null;
 
   const useMap = {
-    V:'Residential (dwelling)', R:'Residential (multi-unit)',
-    I:'Industrial', O:'Office', C:'Commercial', A:'Agricultural',
-    T:'Tourism / holiday', G:'Garage', Y:'Sports / leisure', Z:'Other',
+    V: 'Residential (dwelling)', R: 'Residential (multi-unit)',
+    I: 'Industrial', O: 'Office', C: 'Commercial', A: 'Agricultural',
+    T: 'Tourism / holiday', G: 'Garage', Z: 'Other',
   };
 
-  const rc1 = rc.substring(0,7); const rc2 = rc.substring(7,14);
-  const catUrl = `https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCListaBienes.aspx?RC1=${rc1}&RC2=${rc2}&pest=rc&RCCompleta=${rc}&from=OVCBusqueda&tipoCarto=nuevo`;
+  const r1 = rc.substring(0, 7); const r2 = rc.substring(7, 14);
+  const catUrl = `https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCListaBienes.aspx` +
+    `?RC1=${r1}&RC2=${r2}&pest=rc&RCCompleta=${rc}&from=OVCBusqueda&tipoCarto=nuevo`;
 
   return {
-    rc,
-    address: address || null,
-    addressComponents: {
-      streetType: tv || null, streetName: nv || null, number: pnp || null,
-      block: bq || null, staircase: es || null, floor: pt || null,
-      door: pu || null, postcode: cp || null, municipality: muni || null, province: prov || null,
-    },
-    cadastralData: {
-      use: useMap[uso] || uso || null,
-      builtAreaM2: sfc || stl || null,
-      yearBuilt: ant, cadastralValue: vv, numberOfFloors: npr,
-    },
+    rc, address: address || null,
+    addressComponents: { streetType: tv || null, streetName: nv || null, number: pnp || null,
+      block: bq || null, staircase: es || null, floor: pt || null, door: pu || null,
+      postcode: cp || null, municipality: muni || null, province: prov || null },
+    cadastralData: { use: useMap[uso] || uso || null, builtAreaM2: sfc || stl || null,
+      yearBuilt: ant, cadastralValue: vv, numberOfFloors: npr },
     catastroUrl: catUrl,
     source: 'Catastro OVC — Ministerio de Hacienda',
   };
 }
 
-// ── DIRECT RC LOOKUP ──────────────────────────────────────────────────────────
-async function lookupRC(rc) {
-  const url = `https://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPRC` +
-    `?Provincia=&Municipio=&RC=${encodeURIComponent(rc)}`;
-  const xml = await fetchXML(url);
-  if (!xml) return null;
-  return parseProperty(xml, rc);
+// ── STREET TYPE AUTO-DETECT ───────────────────────────────────────────────────
+function detectStreetType(street, defaultType) {
+  for (const [pattern, sigla] of STREET_PREFIXES) {
+    if (pattern.test(street)) {
+      return { sigla, calle: street.replace(pattern, '').trim() };
+    }
+  }
+  return { sigla: defaultType || 'CL', calle: street.trim() };
 }
 
-// ── FRIENDLY ERROR MESSAGES ───────────────────────────────────────────────────
-function catastroError(code, desc, { municipality, street }) {
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function stripAccents(str) {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[·]/g, '');
+}
+
+function friendlyError(code, desc, { municipality, street, sigla }) {
   const map = {
-    '1':  `Municipality not found (code 1) — "${municipality}" not recognised by Catastro.`,
-    '2':  `Province not recognised. Try leaving the province field blank.`,
-    '3':  `Street "${street}" not found in "${municipality}". Try leaving street blank to search the whole municipality, or check the spelling.`,
-    '4':  `No properties found matching these details.`,
-    '43': `No properties found. Try a different street name or leave it blank.`,
-    '67': `Too many results — add a street name to narrow down.`,
+    '3':  `Street "${sigla} ${street}" not found in ${municipality}. Try leaving the street blank, or check the spelling.`,
+    '4':  `No properties found. Try different search terms.`,
+    '43': `No properties found on that street. Try leaving it blank to search the whole municipality.`,
+    '67': `Too many results — please add a street name to narrow the search.`,
   };
-  return map[code] || (desc ? `Catastro error: ${desc}` : `Catastro returned error code ${code}. Check the municipality name.`);
+  return map[code] || (desc ? `Catastro: ${desc}` : `Catastro error (code ${code}).`);
 }
 
-// ── HTTP HELPERS ──────────────────────────────────────────────────────────────
 async function fetchXML(url) {
   try {
-    const res = await fetch(url, {
-      headers: { 'Accept': 'text/xml, application/xml, */*', 'User-Agent': 'Parcela/1.0' },
+    const r = await fetch(url, {
+      headers: { Accept: 'text/xml, application/xml, */*', 'User-Agent': 'Parcela/1.0' },
       signal: AbortSignal.timeout(12000),
     });
-    if (!res.ok) return null;
-    return await res.text();
-  } catch(e) {
-    console.error('fetchXML error:', e.message, url.substring(0,120));
+    if (!r.ok) return null;
+    return await r.text();
+  } catch (e) {
+    console.error('[fetchXML]', e.message);
     return null;
   }
 }
