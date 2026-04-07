@@ -2,32 +2,23 @@ import http from 'node:http';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-
   const results = {};
 
-  // Test: DNPLOC with empty provincia/municipio — does stripping params help?
-  results.dnploc_no_province = await testUrl(
-    'http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPLOC?Provincia=&Municipio=ARTA&Sigla=CL&Calle=CARDENAL&Numero=12&Bloque=&Escalera=&Planta=&Puerta='
-  );
+  // The text-based endpoints are strict about province name.
+  // Try every plausible variant for Baleares
+  const variants = [
+    'BALEARES', 'ILLES BALEARS', 'BALEARS', 'ISLAS BALEARES', 'IB', '07'
+  ];
 
-  // Test: DNPLOC with minimal params
-  results.dnploc_minimal = await testUrl(
-    'http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPLOC?Provincia=&Municipio=&Sigla=CL&Calle=CARDENAL&Numero=12&Bloque=&Escalera=&Planta=&Puerta='
-  );
+  for (const prov of variants) {
+    results[`via_prov_${prov}`] = await testUrl(
+      `http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/ConsultaVia?Provincia=${encodeURIComponent(prov)}&Municipio=ARTA&TipoVia=CL&NombreVia=CARDENAL`
+    );
+  }
 
-  // Test: DNPRC with a known RC but adding fake province — does adding params break it?
-  results.rc_with_province = await testUrl(
-    'http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPRC?Provincia=ILLES%20BALEARS&Municipio=ARTA&RC=0138301ED3903N'
-  );
-
-  // Test: ConsultaVia with empty province
-  results.via_no_province = await testUrl(
-    'http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/ConsultaVia?Provincia=&Municipio=ARTA&TipoVia=CL&NombreVia=CARDENAL'
-  );
-
-  // Test: ConsultaMunicipio (no codes) — text name version
-  results.consulta_municipio = await testUrl(
-    'http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/ConsultaMunicipio?Provincia=BALEARES&Municipio=ARTA'
+  // Also try ConsultaProvincia — get the exact list of valid province names
+  results.consulta_provincia = await testUrl(
+    'http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/ConsultaProvincia'
   );
 
   res.status(200).json(results);
@@ -47,9 +38,7 @@ function testUrl(url) {
       res.on('data', c => data += c);
       res.on('end', () => resolve({
         status: res.statusCode,
-        length: data.length,
-        preview: data.substring(0, 400),
-        error_code: data.match(/<cuerr>(\d+)<\/cuerr>/i)?.[1] || null,
+        preview: data.substring(0, 300),
         error_desc: data.match(/<des>([^<]+)<\/des>/i)?.[1] || null,
         rc_count: (data.match(/<pc1>/gi) || []).length,
       }));
