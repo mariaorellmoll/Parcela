@@ -182,13 +182,12 @@ function getProvinceCode(province, municipality) {
 
 // ── STEP 2: Get municipality code from Catastro ───────────────────────────────
 async function getMunicipalityCode(provCode, muniName) {
-  // ConsultaMunicipioCodigos takes the PROVINCE NAME, not code
-  const provName = PROVINCE_CODE_TO_NAME[provCode] || provCode;
+  // ConsultaMunicipioCodigos takes CodigoProvincia (numeric code e.g. "07") NOT a province name
   const normalised = MUNI_NAME_MAP[muniName.toLowerCase().trim()] || muniName.toUpperCase().trim();
 
   const tryFetch = async (muni) => {
     const url = `${BASE}/OVCCallejeroCodigos.asmx/ConsultaMunicipioCodigos` +
-      `?Provincia=${encodeURIComponent(provName)}&Municipio=${encodeURIComponent(muni)}`;
+      `?CodigoProvincia=${encodeURIComponent(provCode)}&Municipio=${encodeURIComponent(muni)}`;
     const xml = await fetchXML(url);
     if (!xml) return null;
     const munis = [...xml.matchAll(/<muni>([\s\S]*?)<\/muni>/gi)];
@@ -213,7 +212,7 @@ async function getMunicipalityCode(provCode, muniName) {
   // Try empty string to get all municipalities in province (then filter)
   if (!munis) {
     const url = `${BASE}/OVCCallejeroCodigos.asmx/ConsultaMunicipioCodigos` +
-      `?Provincia=${encodeURIComponent(provName)}&Municipio=`;
+      `?CodigoProvincia=${encodeURIComponent(provCode)}&Municipio=`;
     const xml = await fetchXML(url);
     if (!xml) throw new Error(`Catastro did not respond. This may be a temporary outage — please try again in a moment.`);
     munis = [...xml.matchAll(/<muni>([\s\S]*?)<\/muni>/gi)];
@@ -241,18 +240,28 @@ async function getMunicipalityCode(provCode, muniName) {
 }
 
 function parseMuniList(munis, originalName, query) {
-  // If only one result, use it
+  // The response has two code systems:
+  // <locat><cmc> = Catastro/MHAP municipality code — this is what Consulta_DNPLOC_Codigos needs
+  // <loine><cm>  = INE municipality code — NOT what we want here
+  const extractCode = (block) => {
+    // Try Catastro code first (<cmc> inside <locat>)
+    const cmc = block.match(/<cmc>([^<]+)<\/cmc>/i)?.[1]?.trim();
+    if (cmc) return cmc;
+    // Fall back to INE code (<cm> inside <loine>)
+    return block.match(/<cm>([^<]+)<\/cm>/i)?.[1]?.trim();
+  };
+
   if (munis.length === 1) {
     const block = munis[0][1];
-    const code = block.match(/<cm>([^<]+)<\/cm>/i)?.[1]?.trim();
+    const code = extractCode(block);
     const name = block.match(/<nm>([^<]+)<\/nm>/i)?.[1]?.trim();
     if (code) return { code, name: name || originalName };
   }
-  // Multiple results — find best match
+  // Multiple results — find best match by name
   const queryUpper = query.toUpperCase();
   for (const m of munis) {
     const block = m[1];
-    const code = block.match(/<cm>([^<]+)<\/cm>/i)?.[1]?.trim();
+    const code = extractCode(block);
     const name = block.match(/<nm>([^<]+)<\/nm>/i)?.[1]?.trim() || '';
     if (name.toUpperCase() === queryUpper || stripAccents(name).toUpperCase() === stripAccents(queryUpper)) {
       return { code, name };
@@ -260,7 +269,7 @@ function parseMuniList(munis, originalName, query) {
   }
   // Take first match
   const block = munis[0][1];
-  const code = block.match(/<cm>([^<]+)<\/cm>/i)?.[1]?.trim();
+  const code = extractCode(block);
   const name = block.match(/<nm>([^<]+)<\/nm>/i)?.[1]?.trim();
   return { code, name: name || originalName };
 }
