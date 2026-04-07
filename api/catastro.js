@@ -180,28 +180,39 @@ async function searchByStreet({ provName, muniName, sigla, streetName, m2, floor
   }
 
   // Step 4: Filter and score by m²
+  // For buildings with multiple units, check sub-unit m² too
   const m2Min = m2 * 0.85;
   const m2Max = m2 * 1.15;
 
+  const getEffectiveM2 = (p) => {
+    // If the parcel has sub-units, find the one closest to the target m²
+    if (p.subUnits && p.subUnits.length > 0) {
+      const match = p.subUnits.reduce((best, u) =>
+        Math.abs(u.m2 - m2) < Math.abs((best?.m2 || Infinity) - m2) ? u : best, null);
+      if (match) return match.m2;
+    }
+    return p.cadastralData?.builtAreaM2;
+  };
+
   let matched = valid.filter(p => {
-    const bm2 = p.cadastralData?.builtAreaM2;
-    return !bm2 || (bm2 >= m2Min && bm2 <= m2Max);
+    const eff = getEffectiveM2(p);
+    return !eff || (eff >= m2Min && eff <= m2Max);
   });
 
   // If nothing in tolerance, return closest anyway
   if (matched.length === 0) {
     matched = [...valid].sort((a, b) => {
-      const da = Math.abs((a.cadastralData?.builtAreaM2 || 0) - m2);
-      const db = Math.abs((b.cadastralData?.builtAreaM2 || 0) - m2);
+      const da = Math.abs((getEffectiveM2(a) || 0) - m2);
+      const db = Math.abs((getEffectiveM2(b) || 0) - m2);
       return da - db;
     }).slice(0, 3);
   }
 
   const scored = matched.map(p => {
-    const bm2 = p.cadastralData?.builtAreaM2;
+    const eff = getEffectiveM2(p);
     const yr = p.cadastralData?.yearBuilt;
     let score = 70;
-    if (bm2) score += Math.round((1 - Math.min(Math.abs(bm2 - m2) / m2, 1)) * 25);
+    if (eff) score += Math.round((1 - Math.min(Math.abs(eff - m2) / m2, 1)) * 25);
     if (year_built && yr) {
       const d = Math.abs(yr - parseInt(year_built));
       score += d === 0 ? 10 : d <= 2 ? 7 : d <= 5 ? 3 : 0;
@@ -211,7 +222,9 @@ async function searchByStreet({ provName, muniName, sigla, streetName, m2, floor
       const qf = String(floor).toLowerCase();
       if (pf === qf || pf.includes(qf) || qf.includes(pf)) score += 5;
     }
-    return { ...p, matchScore: Math.min(100, Math.max(0, score)) };
+    // Boost score if a sub-unit matches exactly
+    if (p.subUnits && eff && Math.abs(eff - m2) < 5) score += 5;
+    return { ...p, matchScore: Math.min(100, Math.max(0, score)), effectiveM2: eff };
   });
 
   scored.sort((a, b) => b.matchScore - a.matchScore);
@@ -245,15 +258,18 @@ async function resolveStreetName(provName, muniName, sigla, streetName) {
 // ── STEP 2: Get all RCs on a street ──────────────────────────────────────────
 async function getAllRCsOnStreet(provName, muniName, sigla, streetName) {
   // ConsultaNumero returns numbers near the requested number.
-  // Call with Numero=1 (low end) AND Numero=999 (high end) to cover the whole street.
+  // Call with multiple anchors to cover the full street range.
+  // ConsultaNumero returns ~8 nearest numbers to the anchor.
   const makeUrl = (num) =>
     `${BASE}/OVCCallejero.asmx/ConsultaNumero` +
     `?Provincia=${enc(provName)}&Municipio=${enc(muniName)}` +
     `&TipoVia=${enc(sigla)}&NomVia=${enc(streetName)}&Numero=${num}`;
 
-  const [xml1, xml2] = await Promise.all([
+  const xmlResults = await Promise.all([
     fetchXML(makeUrl(1)),
-    fetchXML(makeUrl(999)),
+    fetchXML(makeUrl(10)),
+    fetchXML(makeUrl(20)),
+    fetchXML(makeUrl(50)),
   ]);
 
   const extractRCs = (xml) => {
@@ -268,8 +284,8 @@ async function getAllRCsOnStreet(provName, muniName, sigla, streetName) {
     return rcs;
   };
 
-  const all = [...extractRCs(xml1), ...extractRCs(xml2)];
-  return [...new Set(all)]; // deduplicate
+  const all = xmlResults.flatMap(extractRCs);
+  return [...new Set(all)];
 }
 
 // ── RC LOOKUP ────────────────────────────────────────────────────────────────
@@ -311,6 +327,25 @@ function parsePropertyXML(xml, rcFallback) {
   const vv=g('vv')?parseFloat(g('vv')):null;
   const npr=g('npr')?parseInt(g('npr')):null;
 
+  // Extract ALL sub-units (individual flats) from <bico> blocks
+  // For buildings with horizontal division, each flat is a separate <bi> block
+  const subUnits = [];
+  const biBlocks = [...xml.matchAll(/<bi>([\s\S]*?)<\/bi>/gi)];
+  if (biBlocks.length > 1) {
+    for (const bm of biBlocks) {
+      const b = bm[1];
+      const bg = tag => b.match(new RegExp(`<${tag}>([^<]*)<\/${tag}>`, 'i'))?.[1]?.trim() || null;
+      const bpc1 = bg('pc1'); const bpc2 = bg('pc2');
+      const bcar = bg('car'); const bcc1 = bg('cc1'); const bcc2 = bg('cc2');
+      const brc = bpc1 && bpc2 ? (bpc1+bpc2+(bcar||'')+(bcc1||'')+(bcc2||'')).toUpperCase() : null;
+      const bsfc = bg('sfc') ? parseFloat(bg('sfc')) : null;
+      const buso = bg('luso') || bg('uso');
+      const bpt = bg('pt') || null;
+      const bpu = bg('pu') || null;
+      if (brc && bsfc) subUnits.push({ rc: brc, m2: bsfc, use: buso, floor: bpt, door: bpu });
+    }
+  }
+
   const useMap={V:'Residential (dwelling)',R:'Residential (multi-unit)',
     I:'Industrial',O:'Office',C:'Commercial',A:'Agricultural',
     T:'Tourism / holiday',G:'Garage',Z:'Other'};
@@ -325,6 +360,7 @@ function parsePropertyXML(xml, rcFallback) {
       postcode:cp||null,municipality:muni||null,province:prov||null},
     cadastralData:{use:useMap[uso]||uso||null,builtAreaM2:sfc||stl||null,
       yearBuilt:ant,cadastralValue:vv,numberOfFloors:npr},
+    subUnits: subUnits.length > 0 ? subUnits : null,
     catastroUrl:catUrl,
     source:'Catastro OVC — Ministerio de Hacienda',
   };
