@@ -1,11 +1,8 @@
 // api/catastro.js
-// Finds a property in Catastro from listing characteristics (neighbourhood + m² + floor + beds)
-// Strategy:
-//   1. Geocode the neighbourhood/zone to lat/lon via Nominatim
-//   2. Query Catastro INSPIRE WFS for all parcels in bounding box
-//   3. Filter by m² (±15%), floor, year built
-//   4. For each match, fetch full property data from Catastro OVC
-//   5. Return ranked candidates with real address + all data
+// Two search paths:
+// A) Direct RC lookup → Consulta_DNPRC (exact)
+// B) Street search → Consulta_DNPLOC (province+municipality+street) → list of RCs
+//    → Consulta_DNPRC for each → filter by m² ±15% → rank → return top 5
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -14,375 +11,298 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { neighbourhood, municipality, province, m2, floor, beds, year_built, rc } = req.body || {};
+  const { rc, province, municipality, street, street_type, floor, door, m2, year_built } = req.body || {};
 
-  // Path A: direct RC lookup (fastest, most accurate)
-  if (rc && rc.trim().length >= 14) {
+  // ── PATH A: Direct RC lookup ──────────────────────────────────────────────
+  if (rc && rc.replace(/\s/g,'').length >= 14) {
     try {
-      const result = await lookupByRC(rc.trim().toUpperCase());
-      return res.status(200).json({ path: 'rc_direct', candidates: result ? [result] : [], query: { rc } });
-    } catch (e) {
+      const clean = rc.replace(/\s/g,'').toUpperCase();
+      const result = await lookupRC(clean);
+      if (!result) return res.status(404).json({ error: `No property found for RC: ${clean}` });
+      return res.status(200).json({ path: 'rc_direct', candidates: [result], query: { rc: clean } });
+    } catch(e) {
       return res.status(500).json({ error: e.message });
     }
   }
 
-  // Path B: fuzzy match from listing characteristics
-  if (!neighbourhood && !municipality) {
-    return res.status(400).json({ error: 'Provide neighbourhood/municipality or a cadastral reference (RC)' });
+  // ── PATH B: Street/neighbourhood search ──────────────────────────────────
+  if (!municipality) {
+    return res.status(400).json({ error: 'Municipality is required for neighbourhood search.' });
   }
   if (!m2) {
-    return res.status(400).json({ error: 'Built area (m²) is required for property matching' });
+    return res.status(400).json({ error: 'Built area (m²) is required — it is the primary matching signal.' });
   }
 
   try {
-    const query = { neighbourhood, municipality, province, m2: parseFloat(m2), floor, beds, year_built };
-    const candidates = await fuzzyFind(query);
-    return res.status(200).json({ path: 'fuzzy', candidates, query });
-  } catch (e) {
-    console.error('catastro error:', e);
+    const candidates = await streetSearch({ province, municipality, street, street_type, floor, door, m2: parseFloat(m2), year_built });
+    return res.status(200).json({ path: 'street', candidates, query: { province, municipality, street, m2, floor, year_built } });
+  } catch(e) {
+    console.error('catastro street search error:', e.message);
     return res.status(500).json({ error: e.message });
   }
 }
 
 // ── DIRECT RC LOOKUP ──────────────────────────────────────────────────────────
-async function lookupByRC(rc) {
-  const url = `https://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPRC?Provincia=&Municipio=&RC=${encodeURIComponent(rc)}`;
+async function lookupRC(rc) {
+  const url = `https://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPRC` +
+    `?Provincia=&Municipio=&RC=${encodeURIComponent(rc)}`;
   const xml = await fetchXML(url);
-  if (!xml) throw new Error('Catastro did not return data for this reference');
-  return parseOVCProperty(xml, rc);
+  if (!xml) return null;
+  return parseProperty(xml, rc);
 }
 
-// ── FUZZY FIND ────────────────────────────────────────────────────────────────
-async function fuzzyFind(query) {
-  const { neighbourhood, municipality, province, m2, floor, beds, year_built } = query;
+// ── STREET SEARCH ─────────────────────────────────────────────────────────────
+// Uses Consulta_DNPLOC: returns all properties matching province+municipality+street
+// Then fetches full data for each and filters by m²
+async function streetSearch({ province, municipality, street, street_type, floor, door, m2, year_built }) {
+  const sigla = street_type || 'CL'; // default to Calle
+  const calle = street || '';
+  const prov  = province || '';
+  const muni  = municipality;
 
-  // Step 1: Geocode to get coordinates
-  const searchTerm = [neighbourhood, municipality, province, 'Spain'].filter(Boolean).join(', ');
-  const geo = await geocode(searchTerm);
-  if (!geo) throw new Error(`Could not locate "${searchTerm}" — try a more specific area name`);
+  // Step 1: Get list of RCs matching the street in this municipality
+  const listUrl = `https://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPLOC` +
+    `?Provincia=${encodeURIComponent(prov)}` +
+    `&Municipio=${encodeURIComponent(muni)}` +
+    `&Sigla=${encodeURIComponent(sigla)}` +
+    `&Calle=${encodeURIComponent(calle)}` +
+    `&Numero=` +
+    `&Bloque=` +
+    `&Escalera=` +
+    `&Planta=${encodeURIComponent(floor || '')}` +
+    `&Puerta=${encodeURIComponent(door || '')}`;
 
-  // Step 2: Build bounding box (roughly 800m radius around the geocoded point)
-  const delta = 0.008; // ~800m in degrees
-  const bbox = `${geo.lon - delta},${geo.lat - delta},${geo.lon + delta},${geo.lat + delta}`;
-
-  // Step 3: Query Catastro INSPIRE WFS for parcels in bounding box
-  const parcels = await queryWFS(bbox, geo);
-  if (!parcels || parcels.length === 0) {
-    throw new Error(`No Catastro data found for this area. Try a different neighbourhood name or expand the search area.`);
+  const listXml = await fetchXML(listUrl);
+  if (!listXml) {
+    throw new Error(`Catastro did not respond. Check the municipality name is spelled correctly in Spanish (e.g. "Palma de Mallorca", not "Palma").`);
   }
 
-  // Step 4: Filter by characteristics
-  const m2Tolerance = 0.15; // 15%
-  const m2Min = m2 * (1 - m2Tolerance);
-  const m2Max = m2 * (1 + m2Tolerance);
+  // Check for Catastro error codes
+  const errCode = listXml.match(/<cuerr>(\d+)<\/cuerr>/i)?.[1];
+  const errDesc = listXml.match(/<des>([^<]+)<\/des>/i)?.[1];
+  if (errCode && errCode !== '0') {
+    const friendly = catastroError(errCode, errDesc, { municipality, street });
+    throw new Error(friendly);
+  }
 
-  let matches = parcels.filter(p => {
-    // m² match (primary filter — required)
-    if (p.builtArea && (p.builtArea < m2Min || p.builtArea > m2Max)) return false;
-    // Year built (if provided, ±5 years)
-    if (year_built && p.yearBuilt) {
-      if (Math.abs(p.yearBuilt - parseInt(year_built)) > 5) return false;
-    }
-    return true;
-  });
+  // Parse the list response — may return either a list of inmuebles or a single property
+  const rcList = parseRCList(listXml);
 
-  // Step 5: Score and rank matches
-  matches = matches.map(p => {
-    let score = 100;
-    // m² proximity score
-    if (p.builtArea && m2) {
-      const diff = Math.abs(p.builtArea - m2) / m2;
-      score -= Math.round(diff * 100); // penalise up to 15 points per 15% diff
-    }
-    // Floor match bonus
-    if (floor && p.floors) {
-      const floorNum = parseInt(floor);
-      if (!isNaN(floorNum) && p.floors >= floorNum) score += 5;
-    }
-    // Year built bonus
-    if (year_built && p.yearBuilt) {
-      const diff = Math.abs(p.yearBuilt - parseInt(year_built));
-      if (diff === 0) score += 10;
-      else if (diff <= 2) score += 5;
-    }
-    return { ...p, matchScore: Math.max(0, Math.min(100, score)) };
-  });
+  if (rcList.length === 0) {
+    // Single property response — parse directly
+    const single = parseProperty(listXml, null);
+    if (single?.rc) return [{ ...single, matchScore: 100 }];
+    throw new Error(`No properties found in "${muni}"${street ? ` on "${street}"` : ''}. Try a different street name or leave it blank to search the whole municipality.`);
+  }
 
-  // Sort by score descending, take top 5
-  matches.sort((a, b) => b.matchScore - a.matchScore);
-  matches = matches.slice(0, 5);
+  if (rcList.length > 200) {
+    throw new Error(`Too many results (${rcList.length} properties). Add a street name to narrow the search.`);
+  }
 
-  // Step 6: For top matches, fetch full OVC data (address + cadastral value)
-  const enriched = await Promise.all(
-    matches.map(async (p) => {
-      if (p.rc) {
-        try {
-          const full = await lookupByRC(p.rc);
-          if (full) return { ...p, ...full, matchScore: p.matchScore };
-        } catch {
-          // Return what we have from WFS
-        }
-      }
-      return p;
+  // Step 2: Fetch full data for each RC in parallel (max 30 at a time)
+  const batch = rcList.slice(0, 30);
+  const fullData = await Promise.all(
+    batch.map(async (item) => {
+      try {
+        const full = await lookupRC(item.rc);
+        return full;
+      } catch { return null; }
     })
   );
 
-  return enriched.filter(p => p.address || p.rc);
-}
-
-// ── GEOCODE via Nominatim ────────────────────────────────────────────────────
-async function geocode(searchTerm) {
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchTerm)}&format=json&limit=1&accept-language=en&countrycodes=es`;
-  const data = await fetchJSON(url, { 'User-Agent': 'Parcela/1.0 (property-finder; contact@parcela.io)' });
-  if (!data || data.length === 0) return null;
-  return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon), display: data[0].display_name };
-}
-
-// ── CATASTRO WFS QUERY ────────────────────────────────────────────────────────
-async function queryWFS(bbox, geo) {
-  // Query Catastro INSPIRE WFS for building units (BU) in the bounding box
-  // The BuildingUnit layer contains per-unit data including area and number of floors
-  const wfsUrl = `https://ovc.catastro.meh.es/INSPIRE/wfsBU.aspx?` +
-    `SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature` +
-    `&TYPENAMES=BU:BuildingUnit` +
-    `&BBOX=${bbox},EPSG:4326` +
-    `&outputFormat=application/json` +
-    `&Count=100`;
-
-  const wfsData = await fetchJSON(wfsUrl);
-
-  if (wfsData?.features && wfsData.features.length > 0) {
-    return wfsData.features.map(f => parseWFSBuilding(f)).filter(Boolean);
+  const valid = fullData.filter(Boolean);
+  if (valid.length === 0) {
+    throw new Error(`Found ${rcList.length} properties but could not fetch their details. Try again shortly.`);
   }
 
-  // Fallback: try the CadastralParcel layer
-  const parcelUrl = `https://ovc.catastro.meh.es/INSPIRE/wfsCP.aspx?` +
-    `SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature` +
-    `&TYPENAMES=CP:CadastralParcel` +
-    `&BBOX=${bbox},EPSG:4326` +
-    `&outputFormat=application/json` +
-    `&Count=100`;
+  // Step 3: Filter and score by m²
+  const m2Tol = 0.15;
+  const m2Min = m2 * (1 - m2Tol);
+  const m2Max = m2 * (1 + m2Tol);
 
-  const parcelData = await fetchJSON(parcelUrl);
-  if (parcelData?.features && parcelData.features.length > 0) {
-    return parcelData.features.map(f => parseWFSParcel(f)).filter(Boolean);
-  }
+  const scored = valid
+    .filter(p => {
+      const bm2 = p?.cadastralData?.builtAreaM2;
+      // Include if m² matches within tolerance, OR if no m² data (don't exclude blindly)
+      if (bm2 && (bm2 < m2Min || bm2 > m2Max)) return false;
+      return true;
+    })
+    .map(p => {
+      const bm2 = p?.cadastralData?.builtAreaM2;
+      const yr  = p?.cadastralData?.yearBuilt;
+      let score = 70; // base score for matching municipality/street
 
-  // Second fallback: use OVC callejero to search by municipality
-  // Extract municipality from geo display name
-  if (geo?.display) {
-    const parts = geo.display.split(',').map(s => s.trim());
-    const muni = parts[1] || parts[0];
-    return await searchByMunicipality(muni, geo);
-  }
+      // m² score (up to +30)
+      if (bm2) {
+        const diff = Math.abs(bm2 - m2) / m2;
+        score += Math.round((1 - diff) * 30);
+      }
+      // Year built bonus (up to +10)
+      if (year_built && yr) {
+        const diff = Math.abs(yr - parseInt(year_built));
+        if (diff === 0) score += 10;
+        else if (diff <= 2) score += 7;
+        else if (diff <= 5) score += 3;
+      }
+      // Floor match bonus (+5)
+      if (floor && p?.addressComponents?.floor) {
+        const pf = p.addressComponents.floor.toString().toLowerCase();
+        const qf = floor.toString().toLowerCase();
+        if (pf === qf || pf.includes(qf) || qf.includes(pf)) score += 5;
+      }
 
-  return [];
+      return { ...p, matchScore: Math.min(100, score) };
+    });
+
+  // Sort by score, take top 5
+  scored.sort((a, b) => b.matchScore - a.matchScore);
+  return scored.slice(0, 5);
 }
 
-function parseWFSBuilding(feature) {
-  if (!feature?.properties) return null;
-  const p = feature.properties;
+// ── PARSE RC LIST FROM Consulta_DNPLOC response ───────────────────────────────
+function parseRCList(xml) {
+  const results = [];
 
-  // Extract RC from various possible field names
-  const rc = p.reference || p.localId || p.inspireId?.localId || p.RC || null;
+  // Format 1: <inmueble> blocks with <rc><pc1>...<pc2>... structure
+  const inmuebles = [...xml.matchAll(/<inmueble>([\s\S]*?)<\/inmueble>/gi)];
+  inmuebles.forEach(m => {
+    const block = m[1];
+    const pc1 = block.match(/<pc1>([^<]+)<\/pc1>/i)?.[1]?.trim();
+    const pc2 = block.match(/<pc2>([^<]+)<\/pc2>/i)?.[1]?.trim();
+    if (pc1 && pc2) {
+      results.push({ rc: (pc1 + pc2).toUpperCase() });
+      return;
+    }
+    const rc = block.match(/<rc>([^<]+)<\/rc>/i)?.[1]?.trim();
+    if (rc) results.push({ rc: rc.toUpperCase() });
+  });
+
+  // Format 2: <bico> blocks
+  if (results.length === 0) {
+    const bicos = [...xml.matchAll(/<bico>([\s\S]*?)<\/bico>/gi)];
+    bicos.forEach(m => {
+      const block = m[1];
+      const pc1 = block.match(/<pc1>([^<]+)<\/pc1>/i)?.[1]?.trim();
+      const pc2 = block.match(/<pc2>([^<]+)<\/pc2>/i)?.[1]?.trim();
+      if (pc1 && pc2) results.push({ rc: (pc1 + pc2).toUpperCase() });
+    });
+  }
+
+  return results;
+}
+
+// ── PARSE SINGLE PROPERTY from Consulta_DNPRC response ───────────────────────
+function parseProperty(xml, rcFallback) {
+  if (!xml) return null;
+
+  // Check for errors
+  const errCode = xml.match(/<cuerr>(\d+)<\/cuerr>/i)?.[1];
+  if (errCode && errCode !== '0') return null;
+
+  const get = (tag) => xml.match(new RegExp(`<${tag}>([^<]*)<\/${tag}>`, 'i'))?.[1]?.trim() || null;
+
+  // RC: try pc1+pc2 first, then rc directly
+  const pc1 = get('pc1');
+  const pc2 = get('pc2');
+  const rc = pc1 && pc2 ? (pc1 + pc2).toUpperCase()
+           : (get('rc') || rcFallback || '').toUpperCase();
+
   if (!rc) return null;
 
-  return {
-    rc: rc.replace(/[^A-Z0-9]/gi, '').toUpperCase(),
-    builtArea: p.officialArea || p.currentUseArea || p.totalArea || null,
-    floors: p.numberOfFloorsAboveGround || p.floors || null,
-    yearBuilt: p.beginLifespanVersion ? parseInt(p.beginLifespanVersion) : null,
-    buildingNature: p.buildingNature || p.currentUse || null,
-    geometry: feature.geometry,
-    source: 'WFS_BuildingUnit',
-  };
-}
+  // Address
+  const tv    = get('tv') || get('tipovia') || '';
+  const nv    = get('nv') || get('nombrevia') || '';
+  const pnp   = get('pnp') || '';
+  const bq    = get('bq') || '';
+  const es    = get('es') || '';
+  const pt    = get('pt') || '';
+  const pu    = get('pu') || '';
+  const muni  = get('nm') || get('municipio') || '';
+  const prov  = get('np') || get('provincia') || '';
+  const cp    = get('dp') || get('cp') || '';
 
-function parseWFSParcel(feature) {
-  if (!feature?.properties) return null;
-  const p = feature.properties;
-  const rc = p.nationalCadastralReference || p.reference || p.localId || null;
-  if (!rc) return null;
-
-  return {
-    rc: rc.replace(/[^A-Z0-9]/gi, '').toUpperCase(),
-    builtArea: p.areaValue || p.area || null,
-    yearBuilt: null,
-    floors: null,
-    source: 'WFS_CadastralParcel',
-  };
-}
-
-// ── OVC CALLEJERO — MUNICIPALITY SEARCH FALLBACK ─────────────────────────────
-async function searchByMunicipality(municipality, geo) {
-  // Use Consulta_DNPLOC to search by partial address in the area
-  // We need province name too — extract from geo display
-  const parts = (geo?.display || '').split(',').map(s => s.trim());
-  const province = parts[parts.length - 2] || '';
-
-  // Search for residential properties in the municipality
-  const url = `https://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPLOC?` +
-    `Provincia=${encodeURIComponent(province)}&Municipio=${encodeURIComponent(municipality)}` +
-    `&Sigla=CL&Calle=&Numero=&Bloque=&Escalera=&Planta=&Puerta=`;
-
-  const xml = await fetchXML(url);
-  if (!xml) return [];
-
-  // Parse list of properties returned
-  return parseOVCList(xml);
-}
-
-// ── XML PARSERS ───────────────────────────────────────────────────────────────
-function parseOVCProperty(xml, rcInput) {
-  if (!xml || xml.includes('<err>') || xml.includes('<cuerr>')) {
-    const errMatch = xml?.match(/<des>([^<]+)<\/des>/i);
-    if (errMatch) throw new Error(`Catastro: ${errMatch[1]}`);
-    return null;
-  }
-
-  // Extract fields from the OVC XML response
-  const get = (tag) => {
-    const m = xml.match(new RegExp(`<${tag}>([^<]*)</${tag}>`, 'i'));
-    return m ? m[1].trim() : null;
-  };
-
-  const getAll = (tag) => {
-    const matches = [...xml.matchAll(new RegExp(`<${tag}>([^<]*)</${tag}>`, 'gi'))];
-    return matches.map(m => m[1].trim());
-  };
-
-  // Address components
-  const tipoVia   = get('tv') || get('sigla') || '';
-  const nombreVia = get('nv') || get('calle') || '';
-  const numero    = get('pnp') || get('numero') || '';
-  const bloque    = get('bq') || '';
-  const escalera  = get('es') || '';
-  const planta    = get('pt') || '';
-  const puerta    = get('pu') || '';
-  const municipio = get('nm') || get('municipio') || '';
-  const provincia = get('np') || get('provincia') || '';
-  const cp        = get('dp') || get('cp') || '';
-
-  // Build human-readable address
-  const addressParts = [
-    [tipoVia, nombreVia].filter(Boolean).join(' '),
-    numero ? `nº ${numero}` : '',
-    bloque ? `Bloque ${bloque}` : '',
-    escalera ? `Esc. ${escalera}` : '',
-    planta ? `Planta ${planta}` : '',
-    puerta ? `Pta. ${puerta}` : '',
+  const streetStr = [tv, nv].filter(Boolean).join(' ');
+  const detailStr = [
+    pnp ? `nº ${pnp}` : '',
+    bq  ? `Bloque ${bq}` : '',
+    es  ? `Esc. ${es}` : '',
+    pt  ? `Planta ${pt}` : '',
+    pu  ? `Pta. ${pu}` : '',
   ].filter(Boolean).join(', ');
 
-  const fullAddress = [addressParts, cp, municipio, provincia].filter(Boolean).join(', ');
+  const address = [streetStr, detailStr, cp, muni, prov].filter(Boolean).join(', ');
 
-  // Property data
-  const rc      = get('rc1') && get('rc2') ? (get('rc1') + get('rc2')) : (get('rc') || rcInput || '');
-  const use     = get('luso') || get('uso') || null;
-  const builtM2 = get('sfc') ? parseFloat(get('sfc')) : null;
-  const yearVal = get('ant') || null;
-  const catValue = get('vv') ? parseFloat(get('vv')) : null;
-  const numFloors = get('npr') ? parseInt(get('npr')) : null;
+  // Property data — Catastro uses different tags in different responses
+  const uso   = get('luso') || get('uso') || null;
+  const sfc   = get('sfc') ? parseFloat(get('sfc')) : null;
+  const ant   = get('ant') ? parseInt(get('ant')) : null;
+  const vv    = get('vv')  ? parseFloat(get('vv'))  : null;
+  const npr   = get('npr') ? parseInt(get('npr'))   : null;
 
-  // Use/type mapping
-  const useMap = {
-    'V': 'Residential (dwelling)',
-    'R': 'Residential (multi-unit)',
-    'I': 'Industrial',
-    'O': 'Office',
-    'C': 'Commercial',
-    'A': 'Agricultural',
-    'T': 'Tourism',
-    'G': 'Garage',
-    'Y': 'Sports / leisure',
-    'E': 'Cultural / educational',
-    'M': 'Religious',
-    'P': 'Public administration',
-    'B': 'Storage',
-    'Z': 'Other',
-  };
+  // Some responses encode area in <stl> or <ssuelo>
+  const stl   = get('stl') ? parseFloat(get('stl')) : null;
+  const builtM2 = sfc || stl || null;
 
-  // Extract all sub-parcelas (for buildings with multiple units)
-  const subunits = [];
-  const bienes = xml.match(/<bico>([\s\S]*?)<\/bico>/gi) || [];
-  bienes.forEach(b => {
-    const su = get.call({ xml: b }, 'dt') || '';
-    const sm2 = b.match(/<sfc>([^<]*)<\/sfc>/i)?.[1];
-    const sus = b.match(/<uso>([^<]*)<\/uso>/i)?.[1];
-    if (sm2) subunits.push({ description: su, m2: parseFloat(sm2), use: sus });
-  });
+  const useMap = { V:'Residential (dwelling)', R:'Residential (multi-unit)',
+    I:'Industrial', O:'Office', C:'Commercial', A:'Agricultural',
+    T:'Tourism / holiday', G:'Garage', Y:'Sports / leisure', Z:'Other' };
+
+  // Build Catastro web link
+  const rc1 = rc.substring(0, 7);
+  const rc2 = rc.substring(7, 14);
+  const catUrl = `https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCListaBienes.aspx?RC1=${rc1}&RC2=${rc2}&pest=rc&RCCompleta=${rc}&from=OVCBusqueda&tipoCarto=nuevo`;
 
   return {
     rc,
-    address: fullAddress || null,
+    address: address || null,
     addressComponents: {
-      streetType: tipoVia,
-      streetName: nombreVia,
-      number: numero,
-      block: bloque || null,
-      staircase: escalera || null,
-      floor: planta || null,
-      door: puerta || null,
-      postcode: cp,
-      municipality: municipio,
-      province: provincia,
+      streetType: tv || null,
+      streetName: nv || null,
+      number: pnp || null,
+      block: bq || null,
+      staircase: es || null,
+      floor: pt || null,
+      door: pu || null,
+      postcode: cp || null,
+      municipality: muni || null,
+      province: prov || null,
     },
     cadastralData: {
-      use: useMap[use] || use || 'Unknown',
+      use: useMap[uso] || uso || null,
       builtAreaM2: builtM2,
-      yearBuilt: yearVal ? parseInt(yearVal) : null,
-      cadastralValue: catValue,
-      numberOfFloors: numFloors,
-      subunits: subunits.length > 0 ? subunits : null,
+      yearBuilt: ant,
+      cadastralValue: vv,
+      numberOfFloors: npr,
     },
-    catastroUrl: rc ? `https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCListaBienes.aspx?RC1=${rc.substring(0,7)}&RC2=${rc.substring(7,14)}&esBice=&RCBice1=&RCBice2=&DenoBice=&pest=rc&final=&RCCompleta=${rc}&from=OVCBusqueda&tipoCarto=nuevo` : null,
+    catastroUrl: catUrl,
     source: 'Catastro OVC — Ministerio de Hacienda',
   };
 }
 
-function parseOVCList(xml) {
-  if (!xml) return [];
-  const results = [];
-  const entries = xml.match(/<inmueble>([\s\S]*?)<\/inmueble>/gi) || [];
-  entries.forEach(entry => {
-    const rcMatch = entry.match(/<rc>([^<]+)<\/rc>/i) || entry.match(/<rc1>([^<]+)<\/rc1>/i);
-    if (rcMatch) {
-      results.push({
-        rc: rcMatch[1].trim().toUpperCase(),
-        source: 'OVC_list',
-        builtArea: null,
-        floors: null,
-        yearBuilt: null,
-      });
-    }
-  });
-  return results;
+// ── FRIENDLY ERROR MESSAGES ───────────────────────────────────────────────────
+function catastroError(code, desc, { municipality, street }) {
+  const map = {
+    '1':  `Municipality "${municipality}" not found. Try the full official name in Spanish (e.g. "Palma de Mallorca", "Sant Antoni de Portmany").`,
+    '2':  `Province not recognised. Try leaving the province field blank.`,
+    '3':  `Street "${street}" not found in "${municipality}". Try leaving street blank to search the whole municipality, or check the spelling.`,
+    '4':  `No properties found matching these details in "${municipality}".`,
+    '43': `No properties found. Try a different street name or leave it blank.`,
+    '67': `Too many results — add a street name to narrow down.`,
+  };
+  return map[code] || (desc ? `Catastro error: ${desc}` : `Catastro returned an error (code ${code}). Check the municipality name.`);
 }
 
 // ── HTTP HELPERS ──────────────────────────────────────────────────────────────
-async function fetchJSON(url, headers = {}) {
-  try {
-    const res = await fetch(url, {
-      headers: { 'Accept': 'application/json, text/plain', ...headers },
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!res.ok) return null;
-    const ct = res.headers.get('content-type') || '';
-    if (!ct.includes('json')) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
-
 async function fetchXML(url) {
   try {
     const res = await fetch(url, {
-      headers: { 'Accept': 'text/xml, application/xml, */*' },
-      signal: AbortSignal.timeout(10000),
+      headers: { 'Accept': 'text/xml, application/xml, */*', 'User-Agent': 'Parcela/1.0' },
+      signal: AbortSignal.timeout(12000),
     });
     if (!res.ok) return null;
     return await res.text();
-  } catch {
+  } catch(e) {
+    console.error('fetchXML error:', e.message, url.substring(0, 100));
     return null;
   }
 }
