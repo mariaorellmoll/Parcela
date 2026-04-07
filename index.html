@@ -211,20 +211,20 @@ footer{border-top:0.5px solid var(--border);padding:1.5rem 2rem;display:flex;ali
 <section class="hero" style="padding-left:2rem;padding-right:2rem;">
   <div class="hero-eyebrow">Spain property intelligence</div>
   <h1 class="hero-title">Find the <em>real record</em> behind any listing.</h1>
-  <p class="hero-sub">Agents hide the address to protect their commission. We find the property in Spain's official Catastro registry and show you the real address, official m², cadastral value, and any flags — free.</p>
+  <p class="hero-sub">Agents hide the address to protect their commission. Enter the municipality and m² from any listing — we search Spain's official Catastro registry and find the real address, official m², cadastral value, and flag any discrepancies. Free.</p>
 
   <div class="how-it-works">
     <div class="how-step">
       <div class="how-num">01</div>
-      <div class="how-text">Enter what the listing shows — neighbourhood, m², floor, year built</div>
+      <div class="how-text">Enter the municipality and built m² from the listing. Street name helps narrow results but is optional.</div>
     </div>
     <div class="how-step">
       <div class="how-num">02</div>
-      <div class="how-text">We query Catastro's official database and match against the characteristics</div>
+      <div class="how-text">We query Catastro's official database — all properties on that street — and filter by m²</div>
     </div>
     <div class="how-step">
       <div class="how-num">03</div>
-      <div class="how-text">Get the real address, official data, and any discrepancies flagged</div>
+      <div class="how-text">Get the real address, official data, and any m² discrepancies flagged in red</div>
     </div>
   </div>
 
@@ -237,28 +237,48 @@ footer{border-top:0.5px solid var(--border);padding:1.5rem 2rem;display:flex;ali
 
 <!-- FORM: From listing -->
 <section class="form-section active" id="form-listing" style="padding:0 2rem;">
-  <div class="field-grid full">
-    <div class="field">
-      <label class="field-label">Neighbourhood / Zone <span class="required">*</span></label>
-      <input id="l-neighbourhood" type="text" placeholder="e.g. Santa Catalina, Palma" autocomplete="off">
-      <div class="field-hint">Enter what the listing says — neighbourhood name, zone, or area</div>
-    </div>
-  </div>
+
   <div class="field-grid">
     <div class="field">
       <label class="field-label">Municipality <span class="required">*</span></label>
       <input id="l-municipality" type="text" placeholder="e.g. Palma de Mallorca" autocomplete="off">
+      <div class="field-hint">Full official name in Spanish</div>
     </div>
     <div class="field">
       <label class="field-label">Province</label>
       <input id="l-province" type="text" placeholder="e.g. Baleares" autocomplete="off">
+      <div class="field-hint">Helps narrow results — optional</div>
     </div>
   </div>
+
+  <div class="field-grid">
+    <div class="field">
+      <label class="field-label">Street type</label>
+      <select id="l-street-type">
+        <option value="CL">Calle (CL)</option>
+        <option value="AV">Avenida (AV)</option>
+        <option value="PZ">Plaza (PZ)</option>
+        <option value="PS">Paseo (PS)</option>
+        <option value="CR">Carretera (CR)</option>
+        <option value="RD">Ronda (RD)</option>
+        <option value="TV">Travesía (TV)</option>
+        <option value="CM">Camino (CM)</option>
+        <option value="UR">Urbanización (UR)</option>
+        <option value="">Other / unknown</option>
+      </select>
+    </div>
+    <div class="field">
+      <label class="field-label">Street name</label>
+      <input id="l-street" type="text" placeholder="e.g. Sant Miquel" autocomplete="off">
+      <div class="field-hint">Leave blank to search entire municipality</div>
+    </div>
+  </div>
+
   <div class="field-grid three">
     <div class="field">
       <label class="field-label">Built area m² <span class="required">*</span></label>
       <input id="l-m2" type="number" placeholder="e.g. 120" min="10" max="2000">
-      <div class="field-hint">Use the constructed m² from the listing</div>
+      <div class="field-hint">Constructed m² from listing</div>
     </div>
     <div class="field">
       <label class="field-label">Floor</label>
@@ -269,8 +289,9 @@ footer{border-top:0.5px solid var(--border);padding:1.5rem 2rem;display:flex;ali
       <input id="l-year" type="number" placeholder="e.g. 1985" min="1800" max="2025">
     </div>
   </div>
+
   <div class="disclaimer">
-    <p>Parcela queries the official <strong>Catastro database</strong> maintained by Spain's Ministry of Finance. All data returned is public information. We search by area and characteristics — results are candidates ranked by likelihood of match. <strong>Always verify with official sources before making decisions.</strong></p>
+    <p>Parcela queries the <strong>official Catastro database</strong> (Ministerio de Hacienda). We search by municipality + street, then match by m². Results are candidates ranked by confidence — <strong>always verify on the official Catastro site before acting.</strong></p>
   </div>
   <button class="submit-btn" id="btn-listing" onclick="searchListing()">Find property in Catastro →</button>
 </section>
@@ -333,30 +354,36 @@ function updateRCLen() {
 
 // SEARCH FROM LISTING
 async function searchListing() {
-  const neighbourhood = document.getElementById('l-neighbourhood').value.trim();
   const municipality  = document.getElementById('l-municipality').value.trim();
   const province      = document.getElementById('l-province').value.trim();
+  const street        = document.getElementById('l-street').value.trim();
+  const street_type   = document.getElementById('l-street-type').value.trim();
   const m2            = document.getElementById('l-m2').value.trim();
   const floor         = document.getElementById('l-floor').value.trim();
   const year_built    = document.getElementById('l-year').value.trim();
 
-  if (!municipality && !neighbourhood) return showError('Please enter at least a neighbourhood or municipality.');
-  if (!m2) return showError('Built area (m²) is required — it\'s the primary matching signal.');
+  if (!municipality) return showError('Municipality is required. Enter the full name in Spanish — e.g. "Palma de Mallorca", "Barcelona", "Madrid".');
+  if (!m2) return showError('Built area (m²) is required — it\'s how we match the property in Catastro.');
 
   const btn = document.getElementById('btn-listing');
   btn.disabled = true; btn.textContent = 'Searching…';
+
+  const stepLabel = street
+    ? `Searching Catastro for properties on ${street_type || 'CL'} ${street} in ${municipality}…`
+    : `Searching all properties in ${municipality}…`;
+
   showLoading([
-    'Locating area on map…',
-    'Querying Catastro database…',
-    'Matching property characteristics…',
-    'Fetching official records…',
+    stepLabel,
+    'Filtering by m² and characteristics…',
+    'Fetching official property records…',
+    'Building results…',
   ]);
 
   try {
     const res = await fetch('/api/catastro', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ neighbourhood, municipality, province, m2, floor, year_built }),
+      body: JSON.stringify({ province, municipality, street, street_type, m2, floor, year_built }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Search failed');
@@ -402,11 +429,14 @@ function renderResults(data, query) {
         <div class="results-title">No matches found</div>
       </div>
       <div class="no-results">
-        <div class="no-results-title">No properties matched in Catastro</div>
+        <div class="no-results-title">No matching properties found</div>
         <div class="no-results-sub">
-          Try a different neighbourhood name or municipality spelling.<br>
-          Catastro coverage excludes the Basque Country and Navarre (which have separate registries).<br>
-          If you have the RC code from the listing or documents, use the "I have the RC code" tab for an exact lookup.
+          Try these fixes:<br><br>
+          — Check the municipality name is in full Spanish (e.g. <strong>"Palma de Mallorca"</strong> not "Palma")<br>
+          — If you entered a street name, try without it to search the whole municipality<br>
+          — Try a different street type (Avenida, Plaza, Paseo…)<br>
+          — Catastro doesn't cover the Basque Country or Navarre (they have separate registries)<br><br>
+          If you can find the RC code on the listing, use the <strong>"I have the RC code"</strong> tab for an exact lookup.
         </div>
       </div>`;
     return;
