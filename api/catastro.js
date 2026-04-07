@@ -150,31 +150,25 @@ function parseStreetInput(street, defaultType) {
 // ── MAIN SEARCH FLOW ──────────────────────────────────────────────────────────
 async function searchByStreet({ provName, muniName, sigla, streetName, m2, floor, year_built }) {
 
-  // Steps 1+2 in parallel: resolve exact street name AND get RCs simultaneously
-  const [exactStreet, rcListFromInput] = await Promise.all([
-    resolveStreetName(provName, muniName, sigla, streetName),
-    getAllRCsOnStreet(provName, muniName, sigla, streetName),
-  ]);
-  console.log('[catastro] exactStreet:', exactStreet, 'rcListFromInput:', rcListFromInput.length);
-
+  // Step 1: Resolve exact street name via ConsultaVia
+  const exactStreet = await resolveStreetName(provName, muniName, sigla, streetName);
   if (!exactStreet) {
     throw new Error(
       `Street "${sigla} ${streetName}" not found in ${muniName}. ` +
-      `Check the spelling — try a partial name (e.g. "CARDENAL" instead of "CARDENAL DESPUIG").`
+      `Check the spelling — try a partial name (e.g. "CARDENAL" instead of "DEL CARDENAL DESPUIG").`
     );
   }
+  console.log('[catastro] exactStreet:', exactStreet);
 
-  // If exact name differs from input and we got no RCs from input, fetch with exact name
-  let rcList = rcListFromInput;
-  if (rcList.length === 0 && exactStreet !== streetName.toUpperCase()) {
-    rcList = await getAllRCsOnStreet(provName, muniName, sigla, exactStreet);
-  }
+  // Step 2: Get all RCs — call ConsultaNumero twice in parallel (low + high end of street)
+  const rcList = await getAllRCsOnStreet(provName, muniName, sigla, exactStreet);
+  console.log('[catastro] rcList:', rcList.length, rcList);
 
   if (rcList.length === 0) {
     throw new Error(`No properties found on ${sigla} ${exactStreet} in ${muniName}.`);
   }
 
-  // Step 3: Fetch full data for each RC in parallel (cap at 20 to stay within timeout)
+  // Step 3: Fetch full data for each RC in parallel (cap at 20)
   const batch = rcList.slice(0, 20);
   const fullData = await Promise.all(
     batch.map(rc => lookupRC(rc).catch(() => null))
