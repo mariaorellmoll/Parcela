@@ -250,23 +250,32 @@ async function resolveStreetName(provName, muniName, sigla, streetName) {
 
 // ── STEP 2: Get all RCs on a street ──────────────────────────────────────────
 async function getAllRCsOnStreet(provName, muniName, sigla, streetName) {
-  // ConsultaNumero returns all street numbers with their RCs
-  // Pass Numero=1 — if it doesn't exist it returns a list of nearby numbers
-  const url = `${BASE}/OVCCallejero.asmx/ConsultaNumero` +
+  // ConsultaNumero returns numbers near the requested number.
+  // Call with Numero=1 (low end) AND Numero=999 (high end) to cover the whole street.
+  const makeUrl = (num) =>
+    `${BASE}/OVCCallejero.asmx/ConsultaNumero` +
     `?Provincia=${enc(provName)}&Municipio=${enc(muniName)}` +
-    `&TipoVia=${enc(sigla)}&NomVia=${enc(streetName)}&Numero=1`;
+    `&TipoVia=${enc(sigla)}&NomVia=${enc(streetName)}&Numero=${num}`;
 
-  const xml = await fetchXML(url);
-  if (!xml) return [];
+  const [xml1, xml2] = await Promise.all([
+    fetchXML(makeUrl(1)),
+    fetchXML(makeUrl(999)),
+  ]);
 
-  const rcs = [];
-  for (const m of xml.matchAll(/<nump>([\s\S]*?)<\/nump>/gi)) {
-    const block = m[1];
-    const pc1 = block.match(/<pc1>([^<]+)<\/pc1>/i)?.[1]?.trim();
-    const pc2 = block.match(/<pc2>([^<]+)<\/pc2>/i)?.[1]?.trim();
-    if (pc1 && pc2) rcs.push((pc1 + pc2).toUpperCase());
-  }
-  return [...new Set(rcs)]; // deduplicate
+  const extractRCs = (xml) => {
+    if (!xml) return [];
+    const rcs = [];
+    for (const m of xml.matchAll(/<nump>([\s\S]*?)<\/nump>/gi)) {
+      const block = m[1];
+      const pc1 = block.match(/<pc1>([^<]+)<\/pc1>/i)?.[1]?.trim();
+      const pc2 = block.match(/<pc2>([^<]+)<\/pc2>/i)?.[1]?.trim();
+      if (pc1 && pc2) rcs.push((pc1 + pc2).toUpperCase());
+    }
+    return rcs;
+  };
+
+  const all = [...extractRCs(xml1), ...extractRCs(xml2)];
+  return [...new Set(all)]; // deduplicate
 }
 
 // ── RC LOOKUP ────────────────────────────────────────────────────────────────
