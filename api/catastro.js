@@ -340,6 +340,19 @@ function parsePropertyXML(xml, rcFallback) {
     }
   }
 
+  // Parse construction floor breakdown from <lcons><cons> blocks
+  const floors = [];
+  for (const m of xml.matchAll(/<cons>([\s\S]*?)<\/cons>/gi)) {
+    const b = m[1];
+    const bg = tag => b.match(new RegExp(`<${tag}>([^<]*)<\/${tag}>`, 'i'))?.[1]?.trim() || null;
+    const use  = bg('lcd');
+    const floor = bg('pt');
+    const stl2 = bg('stl') ? parseFloat(bg('stl')) : null;
+    const reform = bg('ctr') || null;
+    const reformYear = bg('ant') || null;
+    if (use || stl2) floors.push({ use, floor, m2: stl2, reform, reformYear });
+  }
+
   const useMap={V:'Residential (dwelling)',R:'Residential (multi-unit)',
     I:'Industrial',O:'Office',C:'Commercial',A:'Agricultural',
     T:'Tourism / holiday',G:'Garage',Z:'Other'};
@@ -352,8 +365,9 @@ function parsePropertyXML(xml, rcFallback) {
     addressComponents:{streetType:tv||null,streetName:nv||null,number:pnp||null,
       block:bq||null,staircase:es||null,floor:pt||null,door:pu||null,
       postcode:cp||null,municipality:muni||null,province:prov||null},
-    cadastralData:{use:useMap[uso]||uso||null,builtAreaM2:sfc||stl||null,
+    cadastralData:{use:useMap[uso]||uso||null,builtAreaM2:sfc||null,
       yearBuilt:ant,cadastralValue:vv,numberOfFloors:npr},
+    floors: floors.length > 0 ? floors : null,
     subUnits: subUnits.length > 0 ? subUnits : null,
     catastroUrl:catUrl,
     source:'Catastro OVC — Ministerio de Hacienda',
