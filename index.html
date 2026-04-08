@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Parcela — Property Intelligence</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%231a56db'/><path d='M7 4h9a7 7 0 010 14H7V4z' stroke='white' stroke-width='2' fill='none'/><path d='M7 18v10' stroke='white' stroke-width='2' stroke-linecap='round'/><circle cx='16' cy='11' r='3' fill='white'/></svg>">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -864,6 +865,12 @@ function renderCard(c, query, isTop = true) {
 
   const photoUrl = c.rc ? `https://ovc.catastro.meh.es/OVCServWeb/OVCWcfLibres/OVCFotoFachada.svc/RecuperarFotoFachadaGet?ReferenciaCatastral=${c.rc.substring(0,14)}` : null;
 
+  // ── Map ID (unique per card) ──
+  const mapId = `map-${c.rc || Math.random().toString(36).slice(2)}`;
+  const geocodeQuery = [
+    ac.streetType, ac.streetName, ac.number, ac.municipality, ac.province
+  ].filter(Boolean).join(' ');
+
   return `
 <div style="padding-top:2rem;border-top:1px solid var(--border);margin-top:1rem;">
   <div class="results-header" style="margin-bottom:1.5rem;padding-top:0;border-top:none;">
@@ -890,11 +897,17 @@ function renderCard(c, query, isTop = true) {
   </div>
   ${floorsHTML}
   ${insightsHTML?`<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1.5rem;">${insightsHTML}</div>`:''}
+  <!-- MAP -->
+  <div class="screen-only" style="margin-bottom:1.5rem;">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px;">${currentLang==='es'?'Ubicación':'Location'}</div>
+    <div id="${mapId}" style="height:240px;border:1px solid var(--border);border-radius:3px;background:var(--surface);overflow:hidden;"></div>
+  </div>
   <div style="padding-top:1rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
     <div style="font-size:11px;color:var(--ink-faint);line-height:1.7;max-width:480px;">${T.disclaimer2}</div>
     ${c.rc?`<div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ink-faint);letter-spacing:0.5px;">${c.rc}</div>`:''}
   </div>
-</div>`;
+</div>
+<script>setTimeout(()=>initMap('${mapId}','${geocodeQuery.replace(/'/g,"\\'")}'),100);<\/script>`;
 }
 
 // LOADING STATE
@@ -923,6 +936,52 @@ function showError(msg) {
     <div style="padding-top:2rem;border-top:0.5px solid var(--border);margin-top:1rem;">
       <div class="error-box"><p><strong>Error:</strong> ${msg}</p></div>
     </div>`;
+}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// ── MAP ───────────────────────────────────────────────────────────────────────
+async function initMap(mapId, addressQuery) {
+  const el = document.getElementById(mapId);
+  if (!el) return;
+
+  // Show loading state
+  el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:var(--ink-faint);font-family:'JetBrains Mono',monospace;letter-spacing:1px;">${currentLang==='es'?'Cargando mapa…':'Loading map…'}</div>`;
+
+  try {
+    // Geocode with Nominatim (free, no API key)
+    const query = encodeURIComponent(addressQuery + ', Spain');
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1&countrycodes=es`, {
+      headers: { 'Accept-Language': 'es', 'User-Agent': 'Parcela/1.0' }
+    });
+    const results = await r.json();
+    if (!results.length) { el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:var(--ink-faint);">${currentLang==='es'?'Mapa no disponible':'Map unavailable'}</div>`; return; }
+
+    const { lat, lon, display_name } = results[0];
+    el.innerHTML = ''; // clear loading
+
+    const map = L.map(el, { zoomControl:true, attributionControl:false, scrollWheelZoom:false });
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19
+    }).addTo(map);
+
+    // Custom navy pin
+    const icon = L.divIcon({
+      html: `<div style="width:14px;height:14px;background:#1a56db;border:2px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
+      iconSize: [14, 14], iconAnchor: [7, 7], className: ''
+    });
+
+    L.marker([lat, lon], { icon }).addTo(map);
+    map.setView([lat, lon], 16);
+
+    // Prevent map from stealing page scroll on mobile
+    map.on('focus', () => map.scrollWheelZoom.enable());
+    map.on('blur', () => map.scrollWheelZoom.disable());
+
+  } catch(e) {
+    el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:var(--ink-faint);">${currentLang==='es'?'Mapa no disponible':'Map unavailable'}</div>`;
+  }
 }
 </script>
 </body>
