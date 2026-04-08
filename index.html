@@ -160,7 +160,20 @@ footer{border-top:0.5px solid var(--border);padding:1.5rem 2rem;display:flex;ali
 .ac-item span.ac-sub { font-size:11px; color:var(--ink-muted); margin-left:6px; }
 .ac-loading { padding:9px 12px; font-size:12px; color:var(--ink-faint); font-style:italic; }
 .ac-empty { padding:9px 12px; font-size:12px; color:var(--ink-faint); }
-input:disabled { background:var(--paper-warm); color:var(--ink-faint); cursor:not-allowed; }
+.insight-row { border-radius:var(--border-radius-md); padding:0.75rem 1rem; }
+.insight-row.ok { background:var(--green-light); }
+.insight-row.warn { background:var(--amber-bg); }
+.insight-row.alert { background:var(--red-bg); }
+.insight-header { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+.insight-icon { font-size:14px; }
+.insight-title { font-size:13px; font-weight:500; }
+.insight-row.ok .insight-title { color:var(--green); }
+.insight-row.warn .insight-title { color:var(--amber); }
+.insight-row.alert .insight-title { color:var(--red); }
+.insight-body { font-size:12px; line-height:1.65; padding-left:22px; }
+.insight-row.ok .insight-body { color:var(--green); }
+.insight-row.warn .insight-body { color:var(--amber); }
+.insight-row.alert .insight-body { color:var(--red); }
 
 @media(max-width:600px){
   .field-grid,.field-grid.three{grid-template-columns:1fr;}
@@ -242,11 +255,6 @@ input:disabled { background:var(--paper-warm); color:var(--ink-faint); cursor:no
     </div>
   </div>
 
-  <!-- TABS -->
-  <div class="tabs">
-    <button class="tab active" onclick="setTab('listing')">Search by address</button>
-    <button class="tab" onclick="setTab('rc')">I have the reference code</button>
-  </div>
 </section>
 
 <!-- FORM: From listing -->
@@ -305,25 +313,6 @@ input:disabled { background:var(--paper-warm); color:var(--ink-faint); cursor:no
     <p>Parcela checks official Spanish public property records — the same data used in every notarial deed and tax filing. Results are candidates ranked by confidence. <strong>Always verify before making any decisions.</strong></p>
   </div>
   <button class="submit-btn" id="btn-listing" onclick="searchListing()">Check this property →</button>
-</section>
-
-<!-- FORM: RC code -->
-<section class="form-section" id="form-rc" style="padding:0 2rem;">
-  <div class="field-grid full">
-    <div class="field">
-      <label class="field-label">Cadastral reference (RC) <span class="required">*</span></label>
-      <div class="rc-field-wrap">
-        <input id="rc-input" type="text" placeholder="e.g. 9872023VH5797S0001WX" maxlength="20"
-          oninput="updateRCLen()" style="font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;">
-        <span class="rc-len" id="rc-len">0/20</span>
-      </div>
-      <div class="field-hint">The 20-character code found in property documents, IBI receipts, or some listings.</div>
-    </div>
-  </div>
-  <div class="disclaimer">
-    <p>The property reference code (referencia catastral) uniquely identifies every registered property in Spain. If you have it — from documents, receipts, or the listing — this gives you the most accurate results instantly.</p>
-  </div>
-  <button class="submit-btn" id="btn-rc" onclick="searchRC()">Look up cadastral record →</button>
 </section>
 
 <!-- RESULTS -->
@@ -551,7 +540,7 @@ async function searchListing() {
   } catch(e) {
     showError(e.message);
   }
-  btn.disabled = false; btn.textContent = 'Find property in Catastro →';
+  btn.disabled = false; btn.textContent = 'Check this property →';
 }
 
 // SEARCH BY RC
@@ -578,7 +567,7 @@ async function searchRC() {
   btn.disabled = false; btn.textContent = 'Look up cadastral record →';
 }
 
-// RENDER RESULTS
+// RENDER RESULTS — top 1 only, rich insights
 function renderResults(data, query) {
   const el = document.getElementById('results');
   const candidates = data.candidates || [];
@@ -586,166 +575,163 @@ function renderResults(data, query) {
   if (candidates.length === 0) {
     el.innerHTML = `
       <div class="results-header">
-        <div class="results-title">No matches found</div>
+        <div class="results-title">No match found</div>
       </div>
       <div class="no-results">
-        <div class="no-results-title">No matching properties found</div>
+        <div class="no-results-title">We couldn't find a matching property</div>
         <div class="no-results-sub">
-          Try these fixes:<br><br>
-          — Check the municipality name is in full Spanish (e.g. <strong>"Palma de Mallorca"</strong> not "Palma")<br>
-          — If you entered a street name, try without it to search the whole municipality<br>
-          — Try a different street type (Avenida, Plaza, Paseo…)<br>
-          — Catastro doesn't cover the Basque Country or Navarre (they have separate registries)<br><br>
-          If you can find the RC code on the listing, use the <strong>"I have the RC code"</strong> tab for an exact lookup.
+          Try these:<br><br>
+          — Select a different street from the dropdown<br>
+          — Check the m² — use the constructed area (superficie construida), not usable area<br>
+          — Some very new or rural properties may not be in the database yet
         </div>
       </div>`;
     return;
   }
 
-  const path = data.path || 'fuzzy';
-  const metaText = path === 'rc_direct'
-    ? 'Direct RC lookup — exact match'
-    : `${candidates.length} candidate${candidates.length>1?'s':''} found · ranked by match confidence`;
-
-  let html = `<div class="results-header">
-    <div class="results-title">${candidates.length > 1 ? 'Property candidates' : 'Property found'}</div>
-    <div class="results-meta">${metaText}</div>
-  </div>`;
-
-  if (candidates.length > 1) {
-    html += `<div class="error-box" style="background:var(--amber-bg);border-color:var(--amber-bdr);margin-bottom:1.25rem;">
-      <p style="color:var(--amber);">We found <strong>${candidates.length} possible matches</strong> in this area with similar characteristics. Review each one carefully — the top result is most likely, but verify on the official Catastro site before acting.</p>
-    </div>`;
-  }
-
-  candidates.forEach((c, idx) => {
-    const isTop = idx === 0 && candidates.length > 1;
-    const isDirect = path === 'rc_direct';
-    html += renderCandidate(c, idx, isTop, isDirect, query);
-  });
-
-  el.innerHTML = html;
+  const c = candidates[0]; // top match only
+  el.innerHTML = renderCard(c, query);
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function renderCandidate(c, idx, isTop, isDirect, query) {
+function renderCard(c, query) {
   const cd = c.cadastralData || {};
   const ac = c.addressComponents || {};
+  const listedM2 = query.m2 || null;
+  const regM2 = cd.builtAreaM2 || null;
+  const m2Diff = (regM2 && listedM2) ? ((regM2 - listedM2) / listedM2 * 100) : null;
+  const age = cd.yearBuilt ? (new Date().getFullYear() - cd.yearBuilt) : null;
 
-  // ── Address ──
-  const addressDisplay = c.address || 'Address not available';
-  const muniDisplay = [ac.postcode, ac.municipality, ac.province].filter(Boolean).join(' · ');
+  // ── Address line ──
+  const addrParts = [
+    ac.streetType && ac.streetName ? `${ac.streetType} ${ac.streetName}` : '',
+    ac.number ? `nº ${ac.number}` : '',
+    ac.staircase ? `Esc. ${ac.staircase}` : '',
+    ac.floor ? `Planta ${ac.floor}` : '',
+    ac.door ? `Pta. ${ac.door}` : '',
+  ].filter(Boolean).join(', ');
+  const addressLine = addrParts || c.address || '—';
+  const locationLine = [ac.postcode, ac.municipality, ac.province].filter(Boolean).join(', ');
 
-  // ── Data items ──
-  const registeredM2 = cd.builtAreaM2 ? `${cd.builtAreaM2} m²` : '—';
-  const listedM2 = query.m2 ? `${query.m2} m²` : '—';
-  const m2Diff = (cd.builtAreaM2 && query.m2) ? Math.abs(cd.builtAreaM2 - query.m2) : null;
-  const m2DiffPct = m2Diff ? ((m2Diff / query.m2) * 100).toFixed(1) : null;
-
-  const yearDisplay = cd.yearBuilt || '—';
-  const valueDisplay = cd.cadastralValue
-    ? '€' + Math.round(cd.cadastralValue).toLocaleString('es-ES')
-    : '—';
-  const useDisplay = cd.use || '—';
-
-  // ── M² class ──
-  let m2Class = 'highlight';
-  if (m2DiffPct && parseFloat(m2DiffPct) > 10) m2Class = 'warn';
-  if (m2DiffPct && parseFloat(m2DiffPct) > 20) m2Class = 'flag';
-
-  // ── Flags ──
-  const flags = [];
-
-  if (!isDirect && c.matchScore !== undefined) {
-    const conf = c.matchScore >= 85 ? 'High' : c.matchScore >= 65 ? 'Medium' : 'Low';
-    const confClass = c.matchScore >= 85 ? 'ok' : c.matchScore >= 65 ? 'warn' : 'alert';
-    flags.push({ cls: confClass, icon: c.matchScore >= 85 ? '✓' : c.matchScore >= 65 ? '~' : '?',
-      text: `<strong>Match confidence: ${conf} (${c.matchScore}/100).</strong> Based on area location and m² similarity.` });
-  }
-
-  if (m2DiffPct) {
-    if (parseFloat(m2DiffPct) <= 5) {
-      flags.push({ cls:'ok', icon:'✓', text:`<strong>m² match:</strong> Catastro registers ${cd.builtAreaM2} m² — within ${m2DiffPct}% of the ${query.m2} m² on the listing.` });
-    } else if (parseFloat(m2DiffPct) <= 15) {
-      flags.push({ cls:'warn', icon:'⚠', text:`<strong>m² discrepancy:</strong> Catastro registers ${cd.builtAreaM2} m² vs ${query.m2} m² advertised — a ${m2DiffPct}% difference. Verify which figure the sale price is based on.` });
+  // ── Verdict: the single most important thing to know ──
+  let verdictClass = 'ok', verdictIcon = '✓', verdictText = '';
+  if (m2Diff !== null) {
+    const absDiff = Math.abs(m2Diff);
+    if (absDiff <= 3) {
+      verdictClass = 'ok';
+      verdictText = `The registered area matches the listing — ${regM2} m² officially recorded vs ${listedM2} m² advertised. No discrepancy.`;
+    } else if (absDiff <= 12) {
+      verdictClass = 'warn'; verdictIcon = '⚠';
+      const dir = m2Diff < 0 ? 'less' : 'more';
+      verdictText = `The official record shows ${regM2} m² — ${absDiff.toFixed(1)}% ${dir} than the ${listedM2} m² advertised. Ask the seller which figure the price is based on.`;
     } else {
-      flags.push({ cls:'alert', icon:'!', text:`<strong>Significant m² discrepancy:</strong> Catastro registers ${cd.builtAreaM2} m² but the listing shows ${query.m2} m² — a ${m2DiffPct}% gap. This is a red flag. Clarify with the seller before proceeding.` });
+      verdictClass = 'alert'; verdictIcon = '!';
+      const dir = m2Diff < 0 ? 'smaller' : 'larger';
+      verdictText = `Significant gap: officially ${regM2} m² vs ${listedM2} m² listed — ${Math.abs(m2Diff).toFixed(1)}% ${dir}. ${m2Diff < 0 ? 'You may be paying for space that doesn\'t officially exist.' : 'The property may be larger than advertised — verify the price per m².'}`;
     }
   }
 
-  if (cd.cadastralValue && query.m2) {
-    const pricePerM2 = Math.round(cd.cadastralValue / (cd.builtAreaM2 || query.m2));
-    flags.push({ cls:'ok', icon:'€', text:`<strong>Cadastral value:</strong> ${valueDisplay} (≈ €${pricePerM2.toLocaleString('es-ES')}/m²). This is the official tax base value — market prices are typically 2–5× higher.` });
-  }
+  // ── Insights ──
+  const insights = [];
 
-  if (cd.yearBuilt) {
-    const age = new Date().getFullYear() - cd.yearBuilt;
-    if (age > 50) {
-      flags.push({ cls:'warn', icon:'⚠', text:`<strong>Age:</strong> Built in ${cd.yearBuilt} (${age} years old). Consider structural inspection and ITE (technical building inspection) status.` });
-    } else {
-      flags.push({ cls:'ok', icon:'✓', text:`<strong>Age:</strong> Built in ${cd.yearBuilt} (${age} years old).` });
+  // Use check
+  if (cd.use) {
+    const useIsResidential = /residential|dwelling|vivienda/i.test(cd.use);
+    const useIsCommercial = /commercial|comercial|office|industrial/i.test(cd.use);
+    if (useIsCommercial) {
+      insights.push({ cls:'warn', icon:'⚠', title:'Non-residential use registered',
+        text:`This property is officially registered as <strong>${cd.use}</strong>. If you intend to use it as a home, a change-of-use permit (licencia de cambio de uso) will be required — a process that can take 6–18 months and cost €5,000–20,000+.` });
+    } else if (useIsResidential) {
+      insights.push({ cls:'ok', icon:'✓', title:'Residential use confirmed',
+        text:`Registered as <strong>${cd.use}</strong> — consistent with a residential purchase.` });
     }
   }
 
-  if (cd.use && !cd.use.toLowerCase().includes('residential') && !cd.use.toLowerCase().includes('dwelling')) {
-    flags.push({ cls:'warn', icon:'⚠', text:`<strong>Registered use:</strong> Catastro records this as "${cd.use}" — not standard residential. Verify with the listing description.` });
+  // Age / ITE
+  if (age !== null) {
+    if (age >= 50) {
+      insights.push({ cls:'warn', icon:'⚠', title:'ITE inspection likely required',
+        text:`Built in ${cd.yearBuilt} — ${age} years old. Buildings over 50 years in Spain require a Technical Building Inspection (ITE/IEE). Ask the seller for the most recent ITE report before making an offer.` });
+    } else if (age >= 30) {
+      insights.push({ cls:'warn', icon:'⚠', title:'Approaching inspection age',
+        text:`Built in ${cd.yearBuilt} (${age} years old). An ITE will be required within the next ${50 - age} years. Factor potential costs into your offer.` });
+    } else {
+      insights.push({ cls:'ok', icon:'✓', title:'Relatively recent construction',
+        text:`Built in ${cd.yearBuilt} (${age} years old). No mandatory ITE inspection required yet.` });
+    }
   }
 
-  const flagsHTML = flags.map(f =>
-    `<div class="flag-row ${f.cls}"><div class="flag-icon">${f.icon}</div><div class="flag-text">${f.text}</div></div>`
-  ).join('');
+  // Cadastral value insight
+  if (cd.cadastralValue && regM2) {
+    const catPerM2 = Math.round(cd.cadastralValue / regM2);
+    insights.push({ cls:'ok', icon:'€', title:'Tax reference value',
+      text:`The official cadastral value is <strong>€${Math.round(cd.cadastralValue).toLocaleString('es-ES')}</strong> (≈ €${catPerM2.toLocaleString('es-ES')}/m²). This is the base used for IBI property tax — typically well below market value. If the sale price is close to this figure, the transaction may attract additional tax scrutiny.` });
+  }
 
-  // ── Match score badge ──
-  const matchBadge = !isDirect && c.matchScore !== undefined
-    ? `<div class="match-score">${c.matchScore}% match</div>` : '';
-  const topBadge = isTop ? `<div class="top-badge">Best match</div>` : (isDirect ? `<div class="top-badge">Exact lookup</div>` : '');
+  // m² negotiation leverage
+  if (m2Diff !== null && m2Diff < -5 && listedM2) {
+    insights.push({ cls:'ok', icon:'↓', title:'Potential negotiation leverage',
+      text:`The official area is ${Math.abs(m2Diff).toFixed(1)}% smaller than advertised. If the asking price is based on ${listedM2} m², you may be able to negotiate based on the official ${regM2} m².` });
+  }
 
-  // ── RC display ──
-  const rcFormatted = c.rc ? c.rc.replace(/(.{7})(.{7})(.{4})(.{2})/, '$1 $2 $3 $4').trim() : '—';
+  const insightsHTML = insights.map(i => `
+    <div class="insight-row ${i.cls}">
+      <div class="insight-header">
+        <span class="insight-icon">${i.icon}</span>
+        <span class="insight-title">${i.title}</span>
+      </div>
+      <div class="insight-body">${i.text}</div>
+    </div>`).join('');
+
+  // ── Data pills ──
+  const pills = [
+    { label: 'Registered m²', value: regM2 ? `${regM2} m²` : '—', highlight: m2Diff !== null && Math.abs(m2Diff) > 5 },
+    { label: 'Listed m²', value: listedM2 ? `${listedM2} m²` : '—', muted: true },
+    { label: 'Year built', value: cd.yearBuilt || '—' },
+    { label: 'Official use', value: cd.use || '—' },
+    { label: 'Cadastral value', value: cd.cadastralValue ? `€${Math.round(cd.cadastralValue).toLocaleString('es-ES')}` : '—' },
+    { label: 'Floors', value: cd.numberOfFloors || '—' },
+  ].filter(p => p.value !== '—');
+
+  const pillsHTML = pills.map(p => `
+    <div class="data-item">
+      <div class="data-label">${p.label}</div>
+      <div class="data-value ${p.highlight ? 'warn' : p.muted ? '' : ''}"
+           style="${p.muted ? 'color:var(--ink-muted)' : ''}">${p.value}</div>
+    </div>`).join('');
 
   return `
-<div class="candidate ${isTop || isDirect ? 'top-match' : ''}">
-  <div class="candidate-header">
-    <div class="candidate-address">
-      <div class="candidate-address-label">Official registered address</div>
-      <div class="candidate-address-text">${addressDisplay}</div>
-      ${muniDisplay ? `<div class="candidate-address-muni">${muniDisplay}</div>` : ''}
-    </div>
-    <div class="match-badge">
-      ${topBadge}
-      ${matchBadge}
-    </div>
+<div style="padding-top:2rem;border-top:0.5px solid var(--border);margin-top:1rem;">
+
+  <div class="results-header" style="margin-bottom:1.5rem;">
+    <div class="results-title">Property report</div>
+    <div class="results-meta">${c.matchScore ? `${c.matchScore}% confidence` : 'Match found'}</div>
   </div>
 
-  <div class="candidate-body">
-    <div class="data-grid">
-      <div class="data-item">
-        <div class="data-label">Registered m²</div>
-        <div class="data-value ${m2Class}">${registeredM2}</div>
-      </div>
-      <div class="data-item">
-        <div class="data-label">Registered use</div>
-        <div class="data-value">${useDisplay}</div>
-      </div>
-      <div class="data-item">
-        <div class="data-label">Year built</div>
-        <div class="data-value">${yearDisplay}</div>
-      </div>
-      <div class="data-item">
-        <div class="data-label">Cadastral value</div>
-        <div class="data-value">${valueDisplay}</div>
-      </div>
-      ${cd.numberOfFloors ? `<div class="data-item"><div class="data-label">Floors</div><div class="data-value">${cd.numberOfFloors}</div></div>` : ''}
-      ${query.m2 ? `<div class="data-item"><div class="data-label">Listed m²</div><div class="data-value" style="color:var(--ink-muted)">${listedM2}</div></div>` : ''}
-    </div>
-
-    ${flagsHTML ? `<div class="flags">${flagsHTML}</div>` : ''}
+  <!-- ADDRESS BLOCK -->
+  <div style="margin-bottom:1.5rem;">
+    <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:6px;">Registered address</div>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:500;color:var(--ink);line-height:1.25;margin-bottom:4px;">${addressLine}</div>
+    <div style="font-size:13px;color:var(--ink-muted);">${locationLine}</div>
   </div>
 
-  <div class="candidate-footer">
-    <div class="rc-display">RC: ${rcFormatted}</div>
-    ${c.catastroUrl ? `<a class="catastro-link" href="${c.catastroUrl}" target="_blank" rel="noopener">View official record →</a>` : ''}
+  <!-- VERDICT -->
+  ${verdictText ? `<div class="flag-row ${verdictClass}" style="margin-bottom:1.5rem;font-size:13px;">
+    <div class="flag-icon" style="font-size:15px;">${verdictIcon}</div>
+    <div class="flag-text">${verdictText}</div>
+  </div>` : ''}
+
+  <!-- DATA GRID -->
+  <div class="data-grid" style="margin-bottom:1.5rem;">${pillsHTML}</div>
+
+  <!-- INSIGHTS -->
+  ${insightsHTML ? `<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:1.5rem;">${insightsHTML}</div>` : ''}
+
+  <!-- DISCLAIMER -->
+  <div style="font-size:11px;color:var(--ink-faint);line-height:1.7;padding-top:1rem;border-top:0.5px solid var(--border);">
+    Based on official public property records. Data reflects what is currently registered — not necessarily the current physical state of the property. Always instruct a solicitor before exchanging contracts.
   </div>
+
 </div>`;
 }
 
@@ -756,20 +742,16 @@ function showLoading(steps) {
     `<div class="loading-step ${i===0?'active':''}" id="ls-${i}">${s}</div>`
   ).join('');
   el.innerHTML = `<div class="loading">
-    <div class="loading-title">Searching <div class="dot-anim" style="display:inline-flex"><span></span><span></span><span></span></div></div>
+    <div class="loading-title">Checking records <div class="dot-anim" style="display:inline-flex"><span></span><span></span><span></span></div></div>
     <div class="loading-steps">${stepsHTML}</div>
   </div>`;
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-  // Animate through steps
   let i = 0;
   const interval = setInterval(() => {
     i++;
     if (i < steps.length) {
       document.querySelectorAll('.loading-step').forEach((s, j) => s.classList.toggle('active', j === i));
-    } else {
-      clearInterval(interval);
-    }
+    } else { clearInterval(interval); }
   }, 1800);
 }
 
