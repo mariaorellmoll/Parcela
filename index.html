@@ -300,8 +300,9 @@ footer{border-top:0.5px solid var(--border);padding:1.5rem 2rem;display:flex;ali
       <div class="field-hint">Constructed m² from the listing</div>
     </div>
     <div class="field">
-      <label class="field-label">Floor <span style="color:var(--ink-faint);font-size:9px;">(optional)</span></label>
-      <input id="l-floor" type="text" placeholder="e.g. 3, bajo, ático">
+      <label class="field-label">Asking price <span style="color:var(--ink-faint);font-size:9px;">(optional)</span></label>
+      <input id="l-price" type="number" placeholder="e.g. 350000" min="0">
+      <div class="field-hint">In euros — for price per m² analysis</div>
     </div>
     <div class="field">
       <label class="field-label">Year built <span style="color:var(--ink-faint);font-size:9px;">(optional)</span></label>
@@ -506,37 +507,36 @@ async function searchListing() {
   const street        = selectedStreetName || document.getElementById('l-street').value.trim();
   const street_type   = selectedStreetType || document.getElementById('l-street-type').value || 'CL';
   const m2            = document.getElementById('l-m2').value.trim();
-  const floor         = document.getElementById('l-floor').value.trim();
+  const asking_price  = document.getElementById('l-price').value.trim();
   const year_built    = document.getElementById('l-year').value.trim();
 
   if (!province) return showError('Please select a province from the dropdown.');
   if (!municipality) return showError('Please select a municipality from the dropdown.');
   if (!street) return showError('Please select a street from the dropdown.');
-  if (!m2) return showError('Built area (m²) is required — it\'s how we match the property in Catastro.');
+  if (!m2) return showError('Built area (m²) is required.');
 
   const btn = document.getElementById('btn-listing');
-  btn.disabled = true; btn.textContent = 'Searching…';
-
-  const stepLabel = street
-    ? `Searching Catastro for properties on ${street_type || 'CL'} ${street} in ${municipality}…`
-    : `Searching all properties in ${municipality}…`;
+  btn.disabled = true; btn.textContent = 'Checking…';
 
   showLoading([
-    stepLabel,
-    'Filtering by m² and characteristics…',
-    'Fetching official property records…',
-    'Building results…',
+    `Searching ${municipality}…`,
+    'Matching property records…',
+    'Running analysis…',
   ]);
 
   try {
     const res = await fetch('/api/catastro', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ province, municipality, street, street_type, m2, floor, year_built }),
+      body: JSON.stringify({ province, municipality, street, street_type, m2, floor: '', year_built }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Search failed');
-    renderResults(data, { m2: parseFloat(m2), floor, year_built });
+    renderResults(data, {
+      m2: parseFloat(m2),
+      year_built,
+      asking_price: asking_price ? parseFloat(asking_price) : null,
+    });
   } catch(e) {
     showError(e.message);
   }
@@ -668,10 +668,28 @@ function renderCard(c, query) {
       text:`The official cadastral value is <strong>€${Math.round(cd.cadastralValue).toLocaleString('es-ES')}</strong> (≈ €${catPerM2.toLocaleString('es-ES')}/m²). This is the base used for IBI property tax — typically well below market value. If the sale price is close to this figure, the transaction may attract additional tax scrutiny.` });
   }
 
+  // Asking price analysis
+  if (query.asking_price && regM2) {
+    const pricePerM2Listed = Math.round(query.asking_price / listedM2);
+    const pricePerM2Reg = Math.round(query.asking_price / regM2);
+    const catValue = cd.cadastralValue;
+    let priceText = `Asking <strong>€${query.asking_price.toLocaleString('es-ES')}</strong> — that's <strong>€${pricePerM2Listed.toLocaleString('es-ES')}/m²</strong> based on the listed area`;
+    if (regM2 && regM2 !== listedM2) {
+      priceText += `, or <strong>€${pricePerM2Reg.toLocaleString('es-ES')}/m²</strong> based on the officially registered area`;
+    }
+    priceText += '.';
+    if (catValue) {
+      const multiplier = (query.asking_price / catValue).toFixed(1);
+      priceText += ` The asking price is <strong>${multiplier}× the cadastral value</strong> — typical for the Balearics is 3–6×.`;
+    }
+    insights.push({ cls:'ok', icon:'€', title:'Price analysis',
+      text: priceText });
+  }
+
   // m² negotiation leverage
   if (m2Diff !== null && m2Diff < -5 && listedM2) {
     insights.push({ cls:'ok', icon:'↓', title:'Potential negotiation leverage',
-      text:`The official area is ${Math.abs(m2Diff).toFixed(1)}% smaller than advertised. If the asking price is based on ${listedM2} m², you may be able to negotiate based on the official ${regM2} m².` });
+      text:`The official area is ${Math.abs(m2Diff).toFixed(1)}% smaller than advertised. If the asking price is based on ${listedM2} m², you may be able to negotiate based on the officially registered ${regM2} m².` });
   }
 
   const insightsHTML = insights.map(i => `
@@ -700,6 +718,33 @@ function renderCard(c, query) {
            style="${p.muted ? 'color:var(--ink-muted)' : ''}">${p.value}</div>
     </div>`).join('');
 
+  // ── Floor breakdown table ──
+  const floorsHTML = c.floors && c.floors.length > 0 ? `
+    <div style="margin-bottom:1.5rem;">
+      <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--ink-faint);margin-bottom:10px;">Construction breakdown</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead><tr style="border-bottom:0.5px solid var(--border);">
+          <th style="text-align:left;padding:5px 8px 5px 0;font-weight:500;color:var(--ink-muted);font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;">Use</th>
+          <th style="text-align:left;padding:5px 8px;font-weight:500;color:var(--ink-muted);font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;">Floor</th>
+          <th style="text-align:right;padding:5px 0 5px 8px;font-weight:500;color:var(--ink-muted);font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;">m²</th>
+        </tr></thead>
+        <tbody>${c.floors.map(f => `
+          <tr style="border-bottom:0.5px solid var(--border);">
+            <td style="padding:7px 8px 7px 0;color:var(--ink);">${f.use || '—'}</td>
+            <td style="padding:7px 8px;color:var(--ink-muted);">Planta ${f.floor || '—'}</td>
+            <td style="padding:7px 0 7px 8px;text-align:right;font-weight:500;color:var(--ink);">${f.m2 ? f.m2 + ' m²' : '—'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>` : '';
+
+  // Add asking price to pills if provided
+  if (query.asking_price) {
+    const ppm2 = Math.round(query.asking_price / (regM2 || listedM2));
+    pills.push({ label: 'Asking price', value: `€${query.asking_price.toLocaleString('es-ES')}` });
+    pills.push({ label: 'Price per m²', value: `€${ppm2.toLocaleString('es-ES')}` });
+  }
+
   return `
 <div style="padding-top:2rem;border-top:0.5px solid var(--border);margin-top:1rem;">
 
@@ -722,7 +767,14 @@ function renderCard(c, query) {
   </div>` : ''}
 
   <!-- DATA GRID -->
-  <div class="data-grid" style="margin-bottom:1.5rem;">${pillsHTML}</div>
+  <div class="data-grid" style="margin-bottom:1.5rem;">${pills.map(p=>`
+    <div class="data-item">
+      <div class="data-label">${p.label}</div>
+      <div class="data-value" style="${p.muted?'color:var(--ink-muted)':p.highlight?'color:var(--amber)':''}">${p.value}</div>
+    </div>`).join('')}</div>
+
+  <!-- FLOOR BREAKDOWN -->
+  ${floorsHTML}
 
   <!-- INSIGHTS -->
   ${insightsHTML ? `<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:1.5rem;">${insightsHTML}</div>` : ''}
