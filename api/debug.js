@@ -2,31 +2,27 @@ import http from 'node:http';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  const results = {};
 
-  // Test Consulta_DNPLOC with various Numero values — looking for one that returns ALL properties
-  const tests = [
-    ['Numero=0',    'Consulta_DNPLOC?Provincia=ILLES%20BALEARS&Municipio=ARTA&Sigla=CL&Calle=DEL%20CARDENAL%20DESPUIG&Numero=0&Bloque=&Escalera=&Planta=&Puerta='],
-    ['Numero=S/N',  'Consulta_DNPLOC?Provincia=ILLES%20BALEARS&Municipio=ARTA&Sigla=CL&Calle=DEL%20CARDENAL%20DESPUIG&Numero=S%2FN&Bloque=&Escalera=&Planta=&Puerta='],
-    ['no Numero param', 'Consulta_DNPLOC?Provincia=ILLES%20BALEARS&Municipio=ARTA&Sigla=CL&Calle=DEL%20CARDENAL%20DESPUIG&Bloque=&Escalera=&Planta=&Puerta='],
-    ['Numero=12',   'Consulta_DNPLOC?Provincia=ILLES%20BALEARS&Municipio=ARTA&Sigla=CL&Calle=DEL%20CARDENAL%20DESPUIG&Numero=12&Bloque=&Escalera=&Planta=&Puerta='],
-    ['Numero=11',   'Consulta_DNPLOC?Provincia=ILLES%20BALEARS&Municipio=ARTA&Sigla=CL&Calle=DEL%20CARDENAL%20DESPUIG&Numero=11&Bloque=&Escalera=&Planta=&Puerta='],
-    ['Numero=10',   'Consulta_DNPLOC?Provincia=ILLES%20BALEARS&Municipio=ARTA&Sigla=CL&Calle=DEL%20CARDENAL%20DESPUIG&Numero=10&Bloque=&Escalera=&Planta=&Puerta='],
-  ];
+  // Get FULL XML for the number 12 parcel
+  const xml = await fetchRaw(
+    'http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPRC?Provincia=&Municipio=&RC=0138301ED3903N'
+  );
 
-  for (const [label, path] of tests) {
-    const url = `http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/${path}`;
-    const xml = await fetchRaw(url);
-    const rcCount = (xml?.match(/<pc1>/gi) || []).length;
-    const errDesc = xml?.match(/<des>([^<]+)<\/des>/i)?.[1] || null;
-    results[label] = { 
-      rc_count: rcCount, 
-      error: errDesc,
-      preview: xml?.substring(0, 400) 
-    };
-  }
+  // Also check what Consulta_DNPLOC returns for number 12 — does it include sub-units?
+  const xml12 = await fetchRaw(
+    'http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPLOC?Provincia=ILLES%20BALEARS&Municipio=ARTA&Sigla=CL&Calle=DEL%20CARDENAL%20DESPUIG&Numero=12&Bloque=&Escalera=&Planta=&Puerta='
+  );
 
-  res.status(200).json(results);
+  res.status(200).json({
+    dnprc_full: xml,
+    dnploc_12_full: xml12,
+    dnprc_length: xml?.length,
+    dnploc_length: xml12?.length,
+    bi_count_dnprc: (xml?.match(/<bi>/gi) || []).length,
+    bi_count_dnploc: (xml12?.match(/<bi>/gi) || []).length,
+    sfc_values_dnprc: [...(xml?.matchAll(/<sfc>([^<]+)<\/sfc>/gi) || [])].map(m => m[1]),
+    sfc_values_dnploc: [...(xml12?.matchAll(/<sfc>([^<]+)<\/sfc>/gi) || [])].map(m => m[1]),
+  });
 }
 
 async function fetchRaw(url) {
