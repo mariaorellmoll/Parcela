@@ -4,45 +4,27 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   const results = {};
 
-  // Get ALL numbers on the street with both calls
-  const [xml1, xml2] = await Promise.all([
-    fetchRaw('http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/ConsultaNumero?Provincia=ILLES%20BALEARS&Municipio=ARTA&TipoVia=CL&NomVia=DEL%20CARDENAL%20DESPUIG&Numero=1'),
-    fetchRaw('http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/ConsultaNumero?Provincia=ILLES%20BALEARS&Municipio=ARTA&TipoVia=CL&NomVia=DEL%20CARDENAL%20DESPUIG&Numero=999'),
-  ]);
+  // Test Consulta_DNPLOC with various Numero values — looking for one that returns ALL properties
+  const tests = [
+    ['Numero=0',    'Consulta_DNPLOC?Provincia=ILLES%20BALEARS&Municipio=ARTA&Sigla=CL&Calle=DEL%20CARDENAL%20DESPUIG&Numero=0&Bloque=&Escalera=&Planta=&Puerta='],
+    ['Numero=S/N',  'Consulta_DNPLOC?Provincia=ILLES%20BALEARS&Municipio=ARTA&Sigla=CL&Calle=DEL%20CARDENAL%20DESPUIG&Numero=S%2FN&Bloque=&Escalera=&Planta=&Puerta='],
+    ['no Numero param', 'Consulta_DNPLOC?Provincia=ILLES%20BALEARS&Municipio=ARTA&Sigla=CL&Calle=DEL%20CARDENAL%20DESPUIG&Bloque=&Escalera=&Planta=&Puerta='],
+    ['Numero=12',   'Consulta_DNPLOC?Provincia=ILLES%20BALEARS&Municipio=ARTA&Sigla=CL&Calle=DEL%20CARDENAL%20DESPUIG&Numero=12&Bloque=&Escalera=&Planta=&Puerta='],
+    ['Numero=11',   'Consulta_DNPLOC?Provincia=ILLES%20BALEARS&Municipio=ARTA&Sigla=CL&Calle=DEL%20CARDENAL%20DESPUIG&Numero=11&Bloque=&Escalera=&Planta=&Puerta='],
+    ['Numero=10',   'Consulta_DNPLOC?Provincia=ILLES%20BALEARS&Municipio=ARTA&Sigla=CL&Calle=DEL%20CARDENAL%20DESPUIG&Numero=10&Bloque=&Escalera=&Planta=&Puerta='],
+  ];
 
-  // Extract all number+RC pairs from both responses
-  const extractPairs = (xml) => {
-    if (!xml) return [];
-    const pairs = [];
-    for (const m of xml.matchAll(/<nump>([\s\S]*?)<\/nump>/gi)) {
-      const b = m[1];
-      const pc1 = b.match(/<pc1>([^<]+)<\/pc1>/i)?.[1]?.trim();
-      const pc2 = b.match(/<pc2>([^<]+)<\/pc2>/i)?.[1]?.trim();
-      const num = b.match(/<pnp>([^<]+)<\/pnp>/i)?.[1]?.trim();
-      if (pc1 && pc2) pairs.push({ num, rc: pc1 + pc2 });
-    }
-    return pairs;
-  };
-
-  const pairs1 = extractPairs(xml1);
-  const pairs2 = extractPairs(xml2);
-  results.from_numero_1 = pairs1;
-  results.from_numero_999 = pairs2;
-
-  // All unique RCs
-  const allRCs = [...new Set([...pairs1, ...pairs2].map(p => p.rc))];
-  results.all_rcs = allRCs;
-
-  // Fetch m² for each RC
-  const details = await Promise.all(allRCs.map(async rc => {
-    const xml = await fetchRaw(`http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPRC?Provincia=&Municipio=&RC=${rc}`);
-    const sfc = xml?.match(/<sfc>([^<]+)<\/sfc>/i)?.[1]?.trim();
-    const stl = xml?.match(/<stl>([^<]+)<\/stl>/i)?.[1]?.trim();
-    const pnp = xml?.match(/<pnp>([^<]+)<\/pnp>/i)?.[1]?.trim();
-    const luso = xml?.match(/<luso>([^<]+)<\/luso>/i)?.[1]?.trim();
-    return { rc, num: pnp, m2: sfc || stl || null, use: luso };
-  }));
-  results.details = details;
+  for (const [label, path] of tests) {
+    const url = `http://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/${path}`;
+    const xml = await fetchRaw(url);
+    const rcCount = (xml?.match(/<pc1>/gi) || []).length;
+    const errDesc = xml?.match(/<des>([^<]+)<\/des>/i)?.[1] || null;
+    results[label] = { 
+      rc_count: rcCount, 
+      error: errDesc,
+      preview: xml?.substring(0, 400) 
+    };
+  }
 
   res.status(200).json(results);
 }
