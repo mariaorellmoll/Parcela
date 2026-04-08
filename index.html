@@ -300,13 +300,14 @@ footer{border-top:0.5px solid var(--border);padding:1.5rem 2rem;display:flex;ali
       <div class="field-hint">Constructed m² from the listing</div>
     </div>
     <div class="field">
-      <label class="field-label">Asking price <span style="color:var(--ink-faint);font-size:9px;">(optional)</span></label>
-      <input id="l-price" type="number" placeholder="e.g. 350000" min="0">
-      <div class="field-hint">In euros — for price per m² analysis</div>
+      <label class="field-label">Floor <span style="color:var(--ink-faint);font-size:9px;">(optional)</span></label>
+      <input id="l-floor" type="text" placeholder="e.g. 1, bajo, ático">
+      <div class="field-hint">Helps identify flats in apartment buildings</div>
     </div>
     <div class="field">
-      <label class="field-label">Year built <span style="color:var(--ink-faint);font-size:9px;">(optional)</span></label>
-      <input id="l-year" type="number" placeholder="e.g. 1985" min="1800" max="2025">
+      <label class="field-label">Asking price <span style="color:var(--ink-faint);font-size:9px;">(optional)</span></label>
+      <input id="l-price" type="number" placeholder="e.g. 350000" min="0">
+      <div class="field-hint">In euros — for price analysis</div>
     </div>
   </div>
 
@@ -507,8 +508,8 @@ async function searchListing() {
   const street        = selectedStreetName || document.getElementById('l-street').value.trim();
   const street_type   = selectedStreetType || document.getElementById('l-street-type').value || 'CL';
   const m2            = document.getElementById('l-m2').value.trim();
+  const floor         = document.getElementById('l-floor').value.trim();
   const asking_price  = document.getElementById('l-price').value.trim();
-  const year_built    = document.getElementById('l-year').value.trim();
 
   if (!province) return showError('Please select a province from the dropdown.');
   if (!municipality) return showError('Please select a municipality from the dropdown.');
@@ -528,13 +529,13 @@ async function searchListing() {
     const res = await fetch('/api/catastro', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ province, municipality, street, street_type, m2, floor: '', year_built }),
+      body: JSON.stringify({ province, municipality, street, street_type, m2, floor, year_built: '' }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Search failed');
     renderResults(data, {
       m2: parseFloat(m2),
-      year_built,
+      floor,
       asking_price: asking_price ? parseFloat(asking_price) : null,
     });
   } catch(e) {
@@ -668,22 +669,23 @@ function renderCard(c, query) {
       text:`The official cadastral value is <strong>€${Math.round(cd.cadastralValue).toLocaleString('es-ES')}</strong> (≈ €${catPerM2.toLocaleString('es-ES')}/m²). This is the base used for IBI property tax — typically well below market value. If the sale price is close to this figure, the transaction may attract additional tax scrutiny.` });
   }
 
-  // Asking price analysis
+  // Asking price analysis — only show if we can say something meaningful
   if (query.asking_price && regM2) {
-    const pricePerM2Listed = Math.round(query.asking_price / listedM2);
-    const pricePerM2Reg = Math.round(query.asking_price / regM2);
     const catValue = cd.cadastralValue;
-    let priceText = `Asking <strong>€${query.asking_price.toLocaleString('es-ES')}</strong> — that's <strong>€${pricePerM2Listed.toLocaleString('es-ES')}/m²</strong> based on the listed area`;
-    if (regM2 && regM2 !== listedM2) {
-      priceText += `, or <strong>€${pricePerM2Reg.toLocaleString('es-ES')}/m²</strong> based on the officially registered area`;
-    }
-    priceText += '.';
     if (catValue) {
       const multiplier = (query.asking_price / catValue).toFixed(1);
-      priceText += ` The asking price is <strong>${multiplier}× the cadastral value</strong> — typical for the Balearics is 3–6×.`;
+      const context = parseFloat(multiplier) < 2 ? 'unusually low — this could indicate an undervaluation or undeclared works'
+        : parseFloat(multiplier) <= 6 ? 'within the typical range for the Balearics'
+        : 'above typical — ensure the property justifies the premium';
+      insights.push({ cls:'ok', icon:'€', title:'Price vs tax reference',
+        text:`Asking <strong>€${query.asking_price.toLocaleString('es-ES')}</strong> is <strong>${multiplier}× the official cadastral value</strong> — ${context}. Multipliers of 3–6× are most common in Mallorca and Ibiza.` });
     }
-    insights.push({ cls:'ok', icon:'€', title:'Price analysis',
-      text: priceText });
+    if (m2Diff !== null && Math.abs(m2Diff) > 5) {
+      const priceOnReg = Math.round(query.asking_price / regM2);
+      const priceOnListed = Math.round(query.asking_price / listedM2);
+      insights.push({ cls:'warn', icon:'⚠', title:'Price per m² depends on which area you use',
+        text:`If the price is based on the listed <strong>${listedM2} m²</strong> that's €${priceOnListed.toLocaleString('es-ES')}/m². Based on the officially registered <strong>${regM2} m²</strong> it's €${priceOnReg.toLocaleString('es-ES')}/m². Clarify with the seller before signing.` });
+    }
   }
 
   // m² negotiation leverage
@@ -738,12 +740,8 @@ function renderCard(c, query) {
       </table>
     </div>` : '';
 
-  // Add asking price to pills if provided
-  if (query.asking_price) {
-    const ppm2 = Math.round(query.asking_price / (regM2 || listedM2));
-    pills.push({ label: 'Asking price', value: `€${query.asking_price.toLocaleString('es-ES')}` });
-    pills.push({ label: 'Price per m²', value: `€${ppm2.toLocaleString('es-ES')}` });
-  }
+  // ── Building photo (Catastro facade image) ──
+  const photoUrl = c.rc ? `https://ovc.catastro.meh.es/OVCServWeb/OVCWcfLibres/OVCFotoFachada.svc/RecuperarFotoFachadaGet?ReferenciaCatastral=${c.rc.substring(0,14)}` : null;
 
   return `
 <div style="padding-top:2rem;border-top:0.5px solid var(--border);margin-top:1rem;">
@@ -753,11 +751,16 @@ function renderCard(c, query) {
     <div class="results-meta">${c.matchScore ? `${c.matchScore}% confidence` : 'Match found'}</div>
   </div>
 
-  <!-- ADDRESS BLOCK -->
-  <div style="margin-bottom:1.5rem;">
-    <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:6px;">Registered address</div>
-    <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:500;color:var(--ink);line-height:1.25;margin-bottom:4px;">${addressLine}</div>
-    <div style="font-size:13px;color:var(--ink-muted);">${locationLine}</div>
+  <!-- PHOTO + ADDRESS side by side on desktop -->
+  <div style="display:grid;grid-template-columns:${photoUrl ? '140px 1fr' : '1fr'};gap:1.25rem;margin-bottom:1.5rem;align-items:start;">
+    ${photoUrl ? `<img src="${photoUrl}" alt="Building facade"
+      style="width:140px;height:140px;object-fit:cover;border:0.5px solid var(--border);border-radius:var(--border-radius-md);"
+      onerror="this.style.display='none'">` : ''}
+    <div>
+      <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:6px;">Registered address</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500;color:var(--ink);line-height:1.25;margin-bottom:4px;">${addressLine}</div>
+      <div style="font-size:13px;color:var(--ink-muted);">${locationLine}</div>
+    </div>
   </div>
 
   <!-- VERDICT -->
@@ -779,9 +782,12 @@ function renderCard(c, query) {
   <!-- INSIGHTS -->
   ${insightsHTML ? `<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:1.5rem;">${insightsHTML}</div>` : ''}
 
-  <!-- DISCLAIMER -->
-  <div style="font-size:11px;color:var(--ink-faint);line-height:1.7;padding-top:1rem;border-top:0.5px solid var(--border);">
-    Based on official public property records. Data reflects what is currently registered — not necessarily the current physical state of the property. Always instruct a solicitor before exchanging contracts.
+  <!-- FOOTER: RC + disclaimer -->
+  <div style="padding-top:1rem;border-top:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+    <div style="font-size:11px;color:var(--ink-faint);line-height:1.7;max-width:480px;">
+      Based on official public property records. Data reflects what is currently registered — not necessarily the current physical state. Always instruct a solicitor before exchanging contracts.
+    </div>
+    ${c.rc ? `<div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--ink-faint);letter-spacing:0.5px;">${c.rc}</div>` : ''}
   </div>
 
 </div>`;
