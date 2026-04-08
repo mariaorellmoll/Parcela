@@ -3,203 +3,180 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Parcela — Find any property in Spain</title>
+<title>Parcela — Property Intelligence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
-  --green:      #1e5c3a;
-  --green-mid:  #2d7a50;
-  --green-light:#eaf4ee;
-  --green-pale: #f4faf6;
-  --ink:        #0f1f16;
-  --ink-muted:  #556b5d;
-  --ink-faint:  #8fa898;
+  --navy:       #0a1628;
+  --navy-mid:   #132040;
+  --navy-light: #1e3056;
+  --blue:       #1a56db;
+  --blue-hover: #1447c0;
+  --blue-pale:  #eff6ff;
+  --ink:        #0a1628;
+  --ink-muted:  #4a5568;
+  --ink-faint:  #94a3b8;
   --paper:      #ffffff;
-  --paper-warm: #f8faf8;
-  --border:     rgba(30,92,58,0.12);
-  --border-mid: rgba(30,92,58,0.25);
+  --surface:    #f8fafc;
+  --border:     #e2e8f0;
+  --border-mid: #cbd5e1;
   --amber:      #b45309;
   --amber-bg:   #fffbeb;
-  --amber-bdr:  rgba(180,83,9,0.2);
   --red:        #b91c1c;
   --red-bg:     #fef2f2;
-  --red-bdr:    rgba(185,28,28,0.2);
+  --green:      #047857;
+  --green-bg:   #ecfdf5;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 html{scroll-behavior:smooth;}
-body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;}
+body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;}
 
 /* NAV */
-nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.97);border-bottom:0.5px solid var(--border);backdrop-filter:blur(8px);padding:0 2rem;display:flex;align-items:center;height:60px;gap:1rem;}
+nav{position:sticky;top:0;z-index:100;background:var(--navy);padding:0 2rem;display:flex;align-items:center;height:56px;gap:1rem;}
 .logo{display:flex;align-items:center;gap:10px;text-decoration:none;}
-.wordmark{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--ink);}
-.tagline{font-family:'DM Mono',monospace;font-size:7px;letter-spacing:2.5px;text-transform:uppercase;color:var(--green);margin-top:2px;}
-.nav-badge{margin-left:auto;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;padding:4px 10px;border:0.5px solid var(--border-mid);color:var(--green);border-radius:2px;}
+.logo-mark{width:28px;height:28px;background:var(--blue);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.logo-mark svg{display:block;}
+.wordmark{font-size:15px;font-weight:600;color:#fff;letter-spacing:0.02em;}
+.tagline{font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:0.05em;margin-left:2px;}
+.nav-badge{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);border-radius:2px;}
 
 /* HERO */
-.hero{max-width:680px;margin:0 auto;padding:3.5rem 2rem 2rem;}
-.hero-eyebrow{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--green);margin-bottom:1rem;}
-.hero-title{font-family:'Cormorant Garamond',serif;font-size:clamp(32px,4vw,50px);font-weight:500;line-height:1.1;letter-spacing:-0.02em;color:var(--ink);margin-bottom:1rem;}
-.hero-title em{font-style:italic;color:var(--green);}
-.hero-sub{font-size:14px;color:var(--ink-muted);line-height:1.8;margin-bottom:2rem;max-width:520px;}
-.how-it-works{display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:2.5rem;}
-.how-step{display:flex;align-items:flex-start;gap:8px;}
-.how-num{font-family:'DM Mono',monospace;font-size:9px;color:var(--green);font-weight:500;margin-top:2px;flex-shrink:0;}
+.hero{max-width:720px;margin:0 auto;padding:4rem 2rem 2.5rem;}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--blue);margin-bottom:1.25rem;display:flex;align-items:center;gap:8px;}
+.hero-eyebrow::before{content:'';display:block;width:20px;height:1px;background:var(--blue);}
+.hero-title{font-size:clamp(28px,3.5vw,44px);font-weight:600;line-height:1.15;letter-spacing:-0.03em;color:var(--navy);margin-bottom:1rem;}
+.hero-title em{font-style:normal;color:var(--blue);}
+.hero-sub{font-size:15px;color:var(--ink-muted);line-height:1.75;margin-bottom:2.5rem;max-width:540px;font-weight:400;}
+.how-it-works{display:flex;gap:2rem;flex-wrap:wrap;margin-bottom:2.5rem;padding:1.5rem;background:var(--surface);border:1px solid var(--border);}
+.how-step{display:flex;align-items:flex-start;gap:10px;flex:1;min-width:160px;}
+.how-num{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--blue);font-weight:500;margin-top:2px;flex-shrink:0;background:var(--blue-pale);padding:2px 6px;}
 .how-text{font-size:12px;color:var(--ink-muted);line-height:1.6;}
 
-/* TABS */
-.tabs{display:flex;border:0.5px solid var(--border-mid);border-radius:4px;overflow:hidden;margin-bottom:2rem;max-width:360px;}
-.tab{flex:1;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:9px 16px;border:none;background:transparent;color:var(--ink-muted);cursor:pointer;transition:all 0.2s;text-align:center;}
-.tab.active{background:var(--green);color:#fff;}
-
 /* FORM */
-.form-section{display:none;max-width:680px;margin:0 auto;}
+.form-section{display:none;max-width:720px;margin:0 auto;padding:0 2rem;}
 .form-section.active{display:block;}
-.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
 .field-grid.three{grid-template-columns:1fr 1fr 1fr;}
 .field-grid.full{grid-template-columns:1fr;}
-.field{display:flex;flex-direction:column;gap:4px;}
-.field-label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--ink-muted);}
-.field-label .required{color:var(--green);}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-muted);font-weight:500;}
+.field-label .required{color:var(--blue);}
 .field-hint{font-size:10px;color:var(--ink-faint);margin-top:2px;}
-input,select{width:100%;border:0.5px solid var(--border-mid);outline:none;padding:10px 12px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);background:var(--paper);transition:border-color 0.2s;border-radius:2px;}
-input:focus,select:focus{border-color:var(--green);}
+input,select{width:100%;border:1px solid var(--border);outline:none;padding:9px 12px;font-family:'Inter',sans-serif;font-size:13px;color:var(--ink);background:var(--paper);transition:border-color 0.15s,box-shadow 0.15s;border-radius:3px;}
+input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,86,219,0.1);}
 input::placeholder{color:var(--ink-faint);}
-.submit-btn{width:100%;background:var(--green);color:#fff;border:none;padding:13px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:background 0.2s;border-radius:2px;margin-top:4px;}
-.submit-btn:hover{background:var(--green-mid);}
+input:disabled{background:var(--surface);color:var(--ink-faint);cursor:not-allowed;}
+.submit-btn{width:100%;background:var(--blue);color:#fff;border:none;padding:12px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;letter-spacing:0.02em;cursor:pointer;transition:background 0.15s;border-radius:3px;margin-top:6px;}
+.submit-btn:hover{background:var(--blue-hover);}
 .submit-btn:disabled{opacity:0.5;cursor:not-allowed;}
 
-/* RC FIELD */
-.rc-field-wrap{position:relative;}
-.rc-field-wrap input{font-family:'DM Mono',monospace;font-size:13px;letter-spacing:1px;text-transform:uppercase;}
-.rc-len{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-family:'DM Mono',monospace;font-size:9px;color:var(--ink-faint);}
-
 /* DISCLAIMER */
-.disclaimer{background:var(--green-pale);border:0.5px solid var(--border);padding:0.85rem 1rem;margin-top:1rem;margin-bottom:1.5rem;}
+.disclaimer{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--blue);padding:0.85rem 1rem;margin-top:1rem;margin-bottom:1.5rem;}
 .disclaimer p{font-size:11px;color:var(--ink-muted);line-height:1.65;}
 .disclaimer strong{color:var(--ink);font-weight:500;}
 
 /* RESULTS */
-#results{max-width:680px;margin:0 auto;padding:0 2rem 4rem;}
-.results-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:1.25rem;padding-top:2rem;border-top:0.5px solid var(--border);}
-.results-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500;color:var(--ink);}
-.results-meta{font-family:'DM Mono',monospace;font-size:9px;color:var(--ink-faint);letter-spacing:0.5px;}
+#results{max-width:720px;margin:0 auto;padding:0 2rem 4rem;}
+.results-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:1.5rem;padding-top:2rem;border-top:1px solid var(--border);}
+.results-title{font-size:18px;font-weight:600;color:var(--navy);letter-spacing:-0.02em;}
+.results-meta{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ink-faint);letter-spacing:0.5px;}
 
-/* CANDIDATE CARD */
-.candidate{background:var(--paper);border:0.5px solid var(--border);margin-bottom:1rem;overflow:hidden;}
-.candidate.top-match{border-color:var(--green);border-width:1.5px;}
-.candidate-header{padding:1rem 1.25rem;border-bottom:0.5px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;}
-.candidate-address{flex:1;}
-.candidate-address-label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:4px;}
-.candidate-address-text{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:500;color:var(--ink);line-height:1.3;}
-.candidate-address-muni{font-size:12px;color:var(--ink-muted);margin-top:2px;}
-.match-badge{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
-.match-score{font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--green);}
-.top-badge{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;padding:3px 8px;background:var(--green);color:#fff;}
-
-.candidate-body{padding:1rem 1.25rem;}
+/* DATA */
 .data-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1rem;}
-.data-item{display:flex;flex-direction:column;gap:3px;}
-.data-label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-faint);}
-.data-value{font-size:14px;font-weight:500;color:var(--ink);}
+.data-item{display:flex;flex-direction:column;gap:4px;}
+.data-label{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-faint);}
+.data-value{font-size:15px;font-weight:600;color:var(--navy);}
 .data-value.highlight{color:var(--green);}
 .data-value.warn{color:var(--amber);}
 .data-value.flag{color:var(--red);}
 
 /* FLAGS */
-.flags{display:flex;flex-direction:column;gap:6px;margin-bottom:1rem;}
-.flag-row{display:flex;align-items:flex-start;gap:8px;padding:7px 10px;font-size:11px;line-height:1.5;}
-.flag-row.ok{background:var(--green-light);color:var(--green);}
+.flag-row{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;font-size:12px;line-height:1.55;border-radius:3px;}
+.flag-row.ok{background:var(--green-bg);color:var(--green);}
 .flag-row.warn{background:var(--amber-bg);color:var(--amber);}
 .flag-row.alert{background:var(--red-bg);color:var(--red);}
-.flag-icon{font-size:13px;flex-shrink:0;margin-top:0px;}
+.flag-icon{font-size:13px;flex-shrink:0;}
 .flag-text{flex:1;}
-.flag-text strong{font-weight:500;}
+.flag-text strong{font-weight:600;}
 
-/* RC + CATASTRO LINK */
-.candidate-footer{padding:0.75rem 1.25rem;background:var(--paper-warm);border-top:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
-.rc-display{font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-muted);letter-spacing:0.5px;}
-.catastro-link{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--green);text-decoration:none;border:0.5px solid var(--border-mid);padding:5px 10px;transition:all 0.2s;}
-.catastro-link:hover{background:var(--green-light);}
+/* INSIGHT ROWS */
+.insight-row{border-radius:3px;padding:0.85rem 1rem;border-left:3px solid transparent;}
+.insight-row.ok{background:var(--green-bg);border-left-color:var(--green);}
+.insight-row.warn{background:var(--amber-bg);border-left-color:var(--amber);}
+.insight-row.alert{background:var(--red-bg);border-left-color:var(--red);}
+.insight-header{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.insight-icon{font-size:13px;}
+.insight-title{font-size:12px;font-weight:600;}
+.insight-row.ok .insight-title{color:var(--green);}
+.insight-row.warn .insight-title{color:var(--amber);}
+.insight-row.alert .insight-title{color:var(--red);}
+.insight-body{font-size:12px;line-height:1.65;padding-left:21px;}
+.insight-row.ok .insight-body{color:var(--green);}
+.insight-row.warn .insight-body{color:var(--amber);}
+.insight-row.alert .insight-body{color:var(--red);}
 
-/* NO RESULTS */
+/* NO RESULTS / ERROR */
 .no-results{text-align:center;padding:3rem 1rem;}
-.no-results-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500;color:var(--ink);margin-bottom:0.5rem;}
+.no-results-title{font-size:18px;font-weight:600;color:var(--navy);margin-bottom:0.5rem;}
 .no-results-sub{font-size:13px;color:var(--ink-muted);line-height:1.7;}
-
-/* ERROR */
-.error-box{background:var(--red-bg);border:0.5px solid var(--red-bdr);padding:1rem 1.25rem;margin-bottom:1rem;}
+.error-box{background:var(--red-bg);border:1px solid rgba(185,28,28,0.2);border-left:3px solid var(--red);padding:1rem 1.25rem;margin-bottom:1rem;border-radius:3px;}
 .error-box p{font-size:12px;color:var(--red);line-height:1.6;}
 
 /* LOADING */
 .loading{text-align:center;padding:3rem 1rem;}
-.loading-title{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:0.75rem;}
+.loading-title{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--blue);margin-bottom:0.75rem;}
 .loading-steps{display:flex;flex-direction:column;gap:6px;}
 .loading-step{font-size:12px;color:var(--ink-faint);display:flex;align-items:center;gap:8px;justify-content:center;}
-.loading-step.active{color:var(--green);}
+.loading-step.active{color:var(--navy);font-weight:500;}
 .dot-anim{display:inline-flex;gap:3px;}
-.dot-anim span{width:3px;height:3px;background:var(--green);border-radius:50%;animation:dotpop 1.2s infinite;}
+.dot-anim span{width:3px;height:3px;background:var(--blue);border-radius:50%;animation:dotpop 1.2s infinite;}
 .dot-anim span:nth-child(2){animation-delay:.2s;}
 .dot-anim span:nth-child(3){animation-delay:.4s;}
 @keyframes dotpop{0%,80%,100%{transform:scale(.6);opacity:.3}40%{transform:scale(1);opacity:1}}
 
 /* FOOTER */
-footer{border-top:0.5px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;}
-.footer-legal{font-family:'DM Mono',monospace;font-size:8px;color:var(--ink-faint);line-height:1.7;max-width:600px;}
+footer{border-top:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;background:var(--surface);}
+.footer-legal{font-size:11px;color:var(--ink-faint);line-height:1.7;max-width:600px;}
 
 /* AUTOCOMPLETE */
-.autocomplete-wrap { position: relative; }
-.ac-dropdown { display:none; position:absolute; top:100%; left:0; right:0; z-index:200;
-  background:var(--paper); border:0.5px solid var(--border-mid); border-top:none;
-  max-height:220px; overflow-y:auto; }
-.ac-dropdown.open { display:block; }
-.ac-item { padding:9px 12px; font-size:13px; color:var(--ink); cursor:pointer;
-  border-bottom:0.5px solid var(--border); transition:background 0.1s; }
-.ac-item:hover, .ac-item.active { background:var(--green-light); }
-.ac-item span.ac-sub { font-size:11px; color:var(--ink-muted); margin-left:6px; }
-.ac-loading { padding:9px 12px; font-size:12px; color:var(--ink-faint); font-style:italic; }
-.ac-empty { padding:9px 12px; font-size:12px; color:var(--ink-faint); }
-.insight-row { border-radius:var(--border-radius-md); padding:0.75rem 1rem; }
-.insight-row.ok { background:var(--green-light); }
-.insight-row.warn { background:var(--amber-bg); }
-.insight-row.alert { background:var(--red-bg); }
-.insight-header { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
-.insight-icon { font-size:14px; }
-.insight-title { font-size:13px; font-weight:500; }
-.insight-row.ok .insight-title { color:var(--green); }
-.insight-row.warn .insight-title { color:var(--amber); }
-.insight-row.alert .insight-title { color:var(--red); }
-.insight-body { font-size:12px; line-height:1.65; padding-left:22px; }
-.insight-row.ok .insight-body { color:var(--green); }
-.insight-row.warn .insight-body { color:var(--amber); }
-.insight-row.alert .insight-body { color:var(--red); }
+.autocomplete-wrap{position:relative;}
+.ac-dropdown{display:none;position:absolute;top:100%;left:0;right:0;z-index:200;background:var(--paper);border:1px solid var(--border-mid);border-top:none;max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.08);border-radius:0 0 3px 3px;}
+.ac-dropdown.open{display:block;}
+.ac-item{padding:9px 12px;font-size:13px;color:var(--ink);cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.1s;}
+.ac-item:hover,.ac-item.active{background:var(--blue-pale);}
+.ac-item span.ac-sub{font-size:11px;color:var(--ink-faint);margin-left:6px;font-family:'JetBrains Mono',monospace;}
+.ac-loading{padding:9px 12px;font-size:12px;color:var(--ink-faint);font-style:italic;}
+.ac-empty{padding:9px 12px;font-size:12px;color:var(--ink-faint);}
 
 @media(max-width:600px){
   .field-grid,.field-grid.three{grid-template-columns:1fr;}
   .data-grid{grid-template-columns:1fr 1fr;}
   .hero,.form-section{padding-left:1.25rem;padding-right:1.25rem;}
   #results{padding-left:1.25rem;padding-right:1.25rem;}
+  .how-it-works{flex-direction:column;gap:1rem;}
 }
 </style>
 </head>
 <body>
 
 <!-- PASSWORD GATE -->
-<div id="gate" style="display:none;position:fixed;inset:0;background:#fff;z-index:9999;align-items:center;justify-content:center;padding:2rem;">
-  <div style="max-width:340px;width:100%;text-align:center;">
-    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" style="margin:0 auto 1.25rem;display:block;">
-      <rect x="1" y="1" width="34" height="34" rx="5" stroke="#1e5c3a" stroke-width="1.2" fill="rgba(30,92,58,0.04)"/>
-      <path d="M18 7L18 29M7 18L29 18" stroke="#1e5c3a" stroke-width="0.9" stroke-linecap="round"/>
-      <circle cx="18" cy="18" r="5" fill="none" stroke="#1e5c3a" stroke-width="0.9"/>
-      <circle cx="18" cy="18" r="2" fill="#1e5c3a"/>
-    </svg>
-    <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;color:#0f1f16;margin-bottom:3px;">Parcela</div>
-    <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2.5px;text-transform:uppercase;color:#1e5c3a;margin-bottom:1.75rem;">Private preview</div>
+<div id="gate" style="display:none;position:fixed;inset:0;background:var(--navy);z-index:9999;align-items:center;justify-content:center;padding:2rem;">
+  <div style="max-width:320px;width:100%;text-align:center;">
+    <!-- P lettermark with dot -->
+    <div style="width:44px;height:44px;background:var(--blue);display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;">
+      <svg width="22" height="26" viewBox="0 0 22 26" fill="none">
+        <path d="M3 2H13C17.4183 2 21 5.58172 21 10C21 14.4183 17.4183 18 13 18H3V2Z" stroke="white" stroke-width="2" fill="none"/>
+        <path d="M3 18V24" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="13" cy="10" r="2.5" fill="white"/>
+      </svg>
+    </div>
+    <div style="font-size:20px;font-weight:700;color:#fff;letter-spacing:-0.02em;margin-bottom:3px;">Parcela</div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.35);margin-bottom:2rem;">Private Preview</div>
     <input id="gate-input" type="password" placeholder="Access code" onkeydown="if(event.key==='Enter')checkGate()"
-      style="width:100%;border:0.5px solid rgba(30,92,58,0.25);padding:11px 14px;font-family:'DM Sans',sans-serif;font-size:14px;text-align:center;letter-spacing:2px;outline:none;margin-bottom:8px;">
-    <div id="gate-err" style="display:none;font-family:'DM Mono',monospace;font-size:9px;color:#b91c1c;margin-bottom:8px;">Incorrect code</div>
-    <button onclick="checkGate()" style="width:100%;background:#1e5c3a;color:#fff;border:none;padding:11px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;">Enter →</button>
+      style="width:100%;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);padding:11px 14px;font-family:'Inter',sans-serif;font-size:14px;text-align:center;letter-spacing:3px;outline:none;margin-bottom:8px;color:#fff;border-radius:3px;">
+    <div id="gate-err" style="display:none;font-family:'JetBrains Mono',monospace;font-size:9px;color:#f87171;margin-bottom:8px;letter-spacing:1px;">Incorrect code</div>
+    <button onclick="checkGate()" style="width:100%;background:var(--blue);color:#fff;border:none;padding:11px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;border-radius:3px;letter-spacing:0.02em;">Enter →</button>
   </div>
 </div>
 
@@ -220,41 +197,46 @@ footer{border-top:0.5px solid var(--border);padding:1.5rem 2rem;display:flex;ali
 <!-- NAV -->
 <nav>
   <a class="logo" href="/">
-    <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
-      <rect x="1" y="1" width="34" height="34" rx="5" stroke="#1e5c3a" stroke-width="1.2" fill="rgba(30,92,58,0.04)"/>
-      <path d="M18 7L18 29M7 18L29 18" stroke="#1e5c3a" stroke-width="0.9" stroke-linecap="round"/>
-      <circle cx="18" cy="18" r="5" fill="none" stroke="#1e5c3a" stroke-width="0.9"/>
-      <circle cx="18" cy="18" r="2" fill="#1e5c3a"/>
-    </svg>
+    <div class="logo-mark">
+      <svg width="14" height="18" viewBox="0 0 14 18" fill="none">
+        <path d="M2 1H9C11.7614 1 14 3.23858 14 6C14 8.76142 11.7614 11 9 11H2V1Z" stroke="white" stroke-width="1.5" fill="none"/>
+        <path d="M2 11V17" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="9" cy="6" r="1.8" fill="white"/>
+      </svg>
+    </div>
     <div>
       <div class="wordmark">Parcela</div>
-      <div class="tagline">Know before you buy</div>
     </div>
   </a>
-  <div class="nav-badge">Free beta</div>
+  <span class="tagline" style="margin-left:4px;">Property Intelligence</span>
+  <div class="nav-badge">Beta</div>
+  <button onclick="toggleLang()" id="lang-btn" style="margin-left:8px;background:none;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.6);font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;padding:3px 8px;cursor:pointer;border-radius:2px;text-transform:uppercase;">ES</button>
 </nav>
 
 <!-- HERO -->
-<section class="hero" style="padding-left:2rem;padding-right:2rem;">
-  <div class="hero-eyebrow">Balearic Islands · Free property check</div>
-  <h1 class="hero-title">The check every buyer in Spain <em>should be doing.</em></h1>
-  <p class="hero-sub">Before you make an offer, run a Parcela check. We pull the official registered data on any property — area, legal status, year built, cadastral value — and flag anything that doesn't match the listing. Takes 60 seconds. Could save you thousands.</p>
-
-  <div class="how-it-works">
-    <div class="how-step">
-      <div class="how-num">01</div>
-      <div class="how-text">Enter the details from the listing — municipality, street, and advertised m²</div>
-    </div>
-    <div class="how-step">
-      <div class="how-num">02</div>
-      <div class="how-text">We match against official registered records and find the property</div>
-    </div>
-    <div class="how-step">
-      <div class="how-num">03</div>
-      <div class="how-text">See the registered address, official m², legal use, and any red flags — instantly</div>
+<section class="hero">
+  <!-- ENGLISH -->
+  <div id="hero-en">
+    <div class="hero-eyebrow">Balearic Islands · Free property check</div>
+    <h1 class="hero-title">The check every buyer<br>in Spain <em>should be doing.</em></h1>
+    <p class="hero-sub">Before you make an offer, run a Parcela check. We surface the official registered data on any property — area, legal status, year built, cadastral value — and flag anything that doesn't match the listing. 60 seconds. <strong style="color:var(--navy);font-weight:700;border-bottom:2px solid var(--blue);">Could save you thousands.</strong></p>
+    <div class="how-it-works">
+      <div class="how-step"><div class="how-num">01</div><div class="how-text">Enter the details from the listing — municipality, street, and advertised m²</div></div>
+      <div class="how-step"><div class="how-num">02</div><div class="how-text">We match against official registered records and find the property</div></div>
+      <div class="how-step"><div class="how-num">03</div><div class="how-text">See the registered address, official m², legal use, and any red flags — instantly</div></div>
     </div>
   </div>
-
+  <!-- SPANISH -->
+  <div id="hero-es" style="display:none;">
+    <div class="hero-eyebrow">Islas Baleares · Consulta gratuita</div>
+    <h1 class="hero-title">Lo que todo comprador<br>debería hacer <em>antes de firmar.</em></h1>
+    <p class="hero-sub">Antes de hacer una oferta, comprueba los datos oficiales registrados de cualquier inmueble — superficie, uso legal, año de construcción, valor catastral — y detecta cualquier discrepancia con el anuncio. 60 segundos. <strong style="color:var(--navy);font-weight:700;border-bottom:2px solid var(--blue);">Puede ahorrarte miles de euros.</strong></p>
+    <div class="how-it-works">
+      <div class="how-step"><div class="how-num">01</div><div class="how-text">Introduce los datos del anuncio — municipio, calle y m² construidos</div></div>
+      <div class="how-step"><div class="how-num">02</div><div class="how-text">Cruzamos la información con el registro oficial y localizamos el inmueble</div></div>
+      <div class="how-step"><div class="how-num">03</div><div class="how-text">Obtienes la dirección registrada, m² oficiales, uso legal y cualquier alerta — al instante</div></div>
+    </div>
+  </div>
 </section>
 
 <!-- FORM: From listing -->
@@ -262,7 +244,7 @@ footer{border-top:0.5px solid var(--border);padding:1.5rem 2rem;display:flex;ali
 
   <div class="field-grid">
     <div class="field">
-      <label class="field-label">Province <span class="required">*</span></label>
+      <label class="field-label"><span id="lbl-province">Province</span> <span class="required">*</span></label>
       <div class="autocomplete-wrap" id="wrap-province">
         <input id="l-province" type="text" placeholder="Illes Balears" autocomplete="off"
           oninput="onProvinceInput()" onfocus="onProvinceInput()">
@@ -270,7 +252,7 @@ footer{border-top:0.5px solid var(--border);padding:1.5rem 2rem;display:flex;ali
       </div>
     </div>
     <div class="field">
-      <label class="field-label">Municipality <span class="required">*</span></label>
+      <label class="field-label"><span id="lbl-municipality">Municipality</span> <span class="required">*</span></label>
       <div class="autocomplete-wrap" id="wrap-municipality">
         <input id="l-municipality" type="text" placeholder="Select province first…" autocomplete="off"
           oninput="onMuniInput()" onfocus="onMuniInput()" disabled>
@@ -282,7 +264,7 @@ footer{border-top:0.5px solid var(--border);padding:1.5rem 2rem;display:flex;ali
 
   <div class="field-grid full">
     <div class="field">
-      <label class="field-label">Street name <span class="required">*</span></label>
+      <label class="field-label"><span id="lbl-street">Street name</span> <span class="required">*</span></label>
       <div class="autocomplete-wrap" id="wrap-street">
         <input id="l-street" type="text" placeholder="Select municipality first…" autocomplete="off"
           oninput="onStreetInput()" onfocus="onStreetInput()" disabled>
@@ -295,24 +277,24 @@ footer{border-top:0.5px solid var(--border);padding:1.5rem 2rem;display:flex;ali
 
   <div class="field-grid three">
     <div class="field">
-      <label class="field-label">Built area m² <span class="required">*</span></label>
+      <label class="field-label"><span id="lbl-m2">Built area m²</span> <span class="required">*</span></label>
       <input id="l-m2" type="number" placeholder="e.g. 120" min="10" max="2000">
-      <div class="field-hint">Constructed m² from the listing</div>
+      <div class="field-hint" id="hint-m2">Constructed m² from the listing</div>
     </div>
     <div class="field">
-      <label class="field-label">Floor <span style="color:var(--ink-faint);font-size:9px;">(optional)</span></label>
+      <label class="field-label"><span id="lbl-floor">Floor</span> <span style="color:var(--ink-faint);font-size:9px;">(optional)</span></label>
       <input id="l-floor" type="text" placeholder="e.g. 1, bajo, ático">
-      <div class="field-hint">Helps identify flats in apartment buildings</div>
+      <div class="field-hint" id="hint-floor">Helps identify flats in apartment buildings</div>
     </div>
     <div class="field">
-      <label class="field-label">Asking price <span style="color:var(--ink-faint);font-size:9px;">(optional)</span></label>
+      <label class="field-label"><span id="lbl-price">Asking price</span> <span style="color:var(--ink-faint);font-size:9px;">(optional)</span></label>
       <input id="l-price" type="number" placeholder="e.g. 350000" min="0">
-      <div class="field-hint">In euros — for price analysis</div>
+      <div class="field-hint" id="hint-price">In euros — for price analysis</div>
     </div>
   </div>
 
   <div class="disclaimer">
-    <p>Parcela checks official Spanish public property records — the same data used in every notarial deed and tax filing. Results are candidates ranked by confidence. <strong>Always verify before making any decisions.</strong></p>
+    <p id="disclaimer-text">Parcela checks official Spanish public property records — the same data used in every notarial deed and tax filing. Results are candidates ranked by confidence. <strong>Always verify before making any decisions.</strong></p>
   </div>
   <button class="submit-btn" id="btn-listing" onclick="searchListing()">Check this property →</button>
 </section>
@@ -322,24 +304,79 @@ footer{border-top:0.5px solid var(--border);padding:1.5rem 2rem;display:flex;ali
 
 <!-- FOOTER -->
 <footer>
-  <a class="logo" href="/">
-    <svg width="22" height="22" viewBox="0 0 36 36" fill="none">
-      <rect x="1" y="1" width="34" height="34" rx="5" stroke="#1e5c3a" stroke-width="1.2" fill="rgba(30,92,58,0.04)"/>
-      <path d="M18 7L18 29M7 18L29 18" stroke="#1e5c3a" stroke-width="0.9" stroke-linecap="round"/>
-      <circle cx="18" cy="18" r="5" fill="none" stroke="#1e5c3a" stroke-width="0.9"/>
-      <circle cx="18" cy="18" r="2" fill="#1e5c3a"/>
-    </svg>
-    <div>
-      <div style="font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:600;color:var(--ink);">Parcela</div>
+  <a class="logo" href="/" style="gap:8px;">
+    <div class="logo-mark" style="width:22px;height:22px;">
+      <svg width="11" height="14" viewBox="0 0 14 18" fill="none">
+        <path d="M2 1H9C11.7614 1 14 3.23858 14 6C14 8.76142 11.7614 11 9 11H2V1Z" stroke="white" stroke-width="1.5" fill="none"/>
+        <path d="M2 11V17" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
     </div>
+    <span style="font-size:13px;font-weight:600;color:var(--ink-muted);">Parcela</span>
   </a>
   <div class="footer-legal">
     Data sourced from official Spanish public property records under the INSPIRE directive.
-    Results are candidates, not definitive identifications. Always verify with official sources before making decisions. © Parcela Intelligence 2026.
+    Results are indicative — always verify with official sources and instruct a solicitor before exchanging contracts. © Parcela 2026.
   </div>
 </footer>
 
 <script>
+// ── LANGUAGE TOGGLE ───────────────────────────────────────────────────────────
+let currentLang = 'en';
+const t = {
+  en: {
+    province: 'Province', municipality: 'Municipality', street: 'Street name',
+    m2: 'Built area m²', floor: 'Floor', price: 'Asking price',
+    m2hint: 'Constructed m² from the listing', floorhint: 'Helps identify flats in apartment buildings',
+    pricehint: 'In euros — for price analysis',
+    disclaimer: 'Parcela checks official Spanish public property records — the same data used in every notarial deed and tax filing. Results are candidates ranked by confidence. <strong>Always verify before making any decisions.</strong>',
+    btn: 'Check this property →',
+    provinceHint: 'Select a province first', muniHint: 'Select a province first',
+    streetHint: 'Select a municipality first',
+    loading: ['Searching…', 'Matching property records…', 'Running analysis…'],
+  },
+  es: {
+    province: 'Provincia', municipality: 'Municipio', street: 'Nombre de la calle',
+    m2: 'Superficie construida m²', floor: 'Planta', price: 'Precio de venta',
+    m2hint: 'M² construidos según el anuncio', floorhint: 'Ayuda a identificar pisos en edificios',
+    pricehint: 'En euros — para análisis de precio',
+    disclaimer: 'Parcela consulta los registros públicos oficiales de la propiedad en España — los mismos datos que figuran en escrituras y declaraciones fiscales. Los resultados son candidatos ordenados por confianza. <strong>Verifica siempre antes de tomar decisiones.</strong>',
+    btn: 'Consultar esta propiedad →',
+    provinceHint: 'Selecciona primero una provincia', muniHint: 'Selecciona primero una provincia',
+    streetHint: 'Selecciona primero un municipio',
+    loading: ['Buscando…', 'Cotejando registros…', 'Analizando…'],
+  }
+};
+
+function toggleLang() {
+  currentLang = currentLang === 'en' ? 'es' : 'en';
+  const btn = document.getElementById('lang-btn');
+  btn.textContent = currentLang === 'en' ? 'ES' : 'EN';
+
+  // Toggle hero
+  document.getElementById('hero-en').style.display = currentLang === 'en' ? '' : 'none';
+  document.getElementById('hero-es').style.display = currentLang === 'es' ? '' : 'none';
+
+  // Update form labels
+  const T = t[currentLang];
+  const setLabel = (id, text) => { const el = document.getElementById(id); if(el) el.textContent = text; };
+  const setHint  = (id, text) => { const el = document.getElementById(id); if(el) el.textContent = text; };
+  const setHTML  = (id, html) => { const el = document.getElementById(id); if(el) el.innerHTML = html; };
+
+  setLabel('lbl-province', T.province);
+  setLabel('lbl-municipality', T.municipality);
+  setLabel('lbl-street', T.street);
+  setLabel('lbl-m2', T.m2);
+  setLabel('lbl-floor', T.floor);
+  setLabel('lbl-price', T.price);
+  setHint('hint-m2', T.m2hint);
+  setHint('hint-floor', T.floorhint);
+  setHint('hint-price', T.pricehint);
+  setHTML('disclaimer-text', T.disclaimer);
+  document.getElementById('btn-listing').textContent = T.btn;
+  document.getElementById('muni-hint').textContent = T.muniHint;
+  document.getElementById('street-hint').textContent = T.streetHint;
+}
+
 // ── PROVINCE LIST — Balearic Islands only (beta) ─────────────────────────────
 const PROVINCES = ['ILLES BALEARS'];
 
@@ -744,50 +781,52 @@ function renderCard(c, query) {
   const photoUrl = c.rc ? `https://ovc.catastro.meh.es/OVCServWeb/OVCWcfLibres/OVCFotoFachada.svc/RecuperarFotoFachadaGet?ReferenciaCatastral=${c.rc.substring(0,14)}` : null;
 
   return `
-<div style="padding-top:2rem;border-top:0.5px solid var(--border);margin-top:1rem;">
+<div style="padding-top:2rem;border-top:1px solid var(--border);margin-top:1rem;">
 
-  <div class="results-header" style="margin-bottom:1.5rem;">
+  <div class="results-header" style="margin-bottom:1.5rem;padding-top:0;border-top:none;">
     <div class="results-title">Property report</div>
-    <div class="results-meta">${c.matchScore ? `${c.matchScore}% confidence` : 'Match found'}</div>
+    <div class="results-meta">${c.matchScore ? `${c.matchScore}% match confidence` : 'Match found'}</div>
   </div>
 
-  <!-- PHOTO + ADDRESS side by side on desktop -->
+  <!-- PHOTO + ADDRESS -->
   <div style="display:grid;grid-template-columns:${photoUrl ? '140px 1fr' : '1fr'};gap:1.25rem;margin-bottom:1.5rem;align-items:start;">
     ${photoUrl ? `<img src="${photoUrl}" alt="Building facade"
-      style="width:140px;height:140px;object-fit:cover;border:0.5px solid var(--border);border-radius:var(--border-radius-md);"
+      style="width:140px;height:140px;object-fit:cover;border:1px solid var(--border);border-radius:3px;"
       onerror="this.style.display='none'">` : ''}
     <div>
-      <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:6px;">Registered address</div>
-      <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500;color:var(--ink);line-height:1.25;margin-bottom:4px;">${addressLine}</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--blue);margin-bottom:8px;">Registered address</div>
+      <div style="font-size:20px;font-weight:600;color:var(--navy);line-height:1.25;margin-bottom:5px;letter-spacing:-0.02em;">${addressLine}</div>
       <div style="font-size:13px;color:var(--ink-muted);">${locationLine}</div>
     </div>
   </div>
 
   <!-- VERDICT -->
-  ${verdictText ? `<div class="flag-row ${verdictClass}" style="margin-bottom:1.5rem;font-size:13px;">
-    <div class="flag-icon" style="font-size:15px;">${verdictIcon}</div>
+  ${verdictText ? `<div class="flag-row ${verdictClass}" style="margin-bottom:1.5rem;">
+    <div class="flag-icon">${verdictIcon}</div>
     <div class="flag-text">${verdictText}</div>
   </div>` : ''}
 
   <!-- DATA GRID -->
-  <div class="data-grid" style="margin-bottom:1.5rem;">${pills.map(p=>`
-    <div class="data-item">
-      <div class="data-label">${p.label}</div>
-      <div class="data-value" style="${p.muted?'color:var(--ink-muted)':p.highlight?'color:var(--amber)':''}">${p.value}</div>
-    </div>`).join('')}</div>
+  <div style="background:var(--surface);border:1px solid var(--border);padding:1.25rem;margin-bottom:1.5rem;border-radius:3px;">
+    <div class="data-grid">${pills.map(p=>`
+      <div class="data-item">
+        <div class="data-label">${p.label}</div>
+        <div class="data-value" style="${p.muted?'color:var(--ink-muted)':p.highlight?'color:var(--amber)':''}">${p.value}</div>
+      </div>`).join('')}</div>
+  </div>
 
   <!-- FLOOR BREAKDOWN -->
   ${floorsHTML}
 
   <!-- INSIGHTS -->
-  ${insightsHTML ? `<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:1.5rem;">${insightsHTML}</div>` : ''}
+  ${insightsHTML ? `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1.5rem;">${insightsHTML}</div>` : ''}
 
   <!-- FOOTER: RC + disclaimer -->
-  <div style="padding-top:1rem;border-top:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+  <div style="padding-top:1rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
     <div style="font-size:11px;color:var(--ink-faint);line-height:1.7;max-width:480px;">
-      Based on official public property records. Data reflects what is currently registered — not necessarily the current physical state. Always instruct a solicitor before exchanging contracts.
+      Based on official public property records. Always instruct a solicitor before exchanging contracts.
     </div>
-    ${c.rc ? `<div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--ink-faint);letter-spacing:0.5px;">${c.rc}</div>` : ''}
+    ${c.rc ? `<div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ink-faint);letter-spacing:0.5px;">${c.rc}</div>` : ''}
   </div>
 
 </div>`;
