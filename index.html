@@ -215,7 +215,7 @@ input:disabled { background:var(--paper-warm); color:var(--ink-faint); cursor:no
     </svg>
     <div>
       <div class="wordmark">Parcela</div>
-      <div class="tagline">Property intelligence</div>
+      <div class="tagline">Know before you buy</div>
     </div>
   </a>
   <div class="nav-badge">Free beta</div>
@@ -223,29 +223,29 @@ input:disabled { background:var(--paper-warm); color:var(--ink-faint); cursor:no
 
 <!-- HERO -->
 <section class="hero" style="padding-left:2rem;padding-right:2rem;">
-  <div class="hero-eyebrow">Spain property intelligence</div>
-  <h1 class="hero-title">Find the <em>real record</em> behind any listing.</h1>
-  <p class="hero-sub">Agents hide the address to protect their commission. Enter the municipality and m² from any listing — we search Spain's official Catastro registry and find the real address, official m², cadastral value, and flag any discrepancies. Free.</p>
+  <div class="hero-eyebrow">Balearic Islands · Free property check</div>
+  <h1 class="hero-title">The check every buyer in Spain <em>should be doing.</em></h1>
+  <p class="hero-sub">Before you make an offer, run a Parcela check. We pull the official registered data on any property — area, legal status, year built, cadastral value — and flag anything that doesn't match the listing. Takes 60 seconds. Could save you thousands.</p>
 
   <div class="how-it-works">
     <div class="how-step">
       <div class="how-num">01</div>
-      <div class="how-text">Enter the municipality and built m² from the listing. Street name helps narrow results but is optional.</div>
+      <div class="how-text">Enter the details from the listing — municipality, street, and advertised m²</div>
     </div>
     <div class="how-step">
       <div class="how-num">02</div>
-      <div class="how-text">We query Catastro's official database — all properties on that street — and filter by m²</div>
+      <div class="how-text">We match against official registered records and find the property</div>
     </div>
     <div class="how-step">
       <div class="how-num">03</div>
-      <div class="how-text">Get the real address, official data, and any m² discrepancies flagged in red</div>
+      <div class="how-text">See the registered address, official m², legal use, and any red flags — instantly</div>
     </div>
   </div>
 
   <!-- TABS -->
   <div class="tabs">
-    <button class="tab active" onclick="setTab('listing')">From listing details</button>
-    <button class="tab" onclick="setTab('rc')">I have the RC code</button>
+    <button class="tab active" onclick="setTab('listing')">Search by address</button>
+    <button class="tab" onclick="setTab('rc')">I have the reference code</button>
   </div>
 </section>
 
@@ -256,7 +256,7 @@ input:disabled { background:var(--paper-warm); color:var(--ink-faint); cursor:no
     <div class="field">
       <label class="field-label">Province <span class="required">*</span></label>
       <div class="autocomplete-wrap" id="wrap-province">
-        <input id="l-province" type="text" placeholder="e.g. Illes Balears, Madrid…" autocomplete="off"
+        <input id="l-province" type="text" placeholder="Illes Balears" autocomplete="off"
           oninput="onProvinceInput()" onfocus="onProvinceInput()">
         <div class="ac-dropdown" id="ac-province"></div>
       </div>
@@ -302,9 +302,9 @@ input:disabled { background:var(--paper-warm); color:var(--ink-faint); cursor:no
   </div>
 
   <div class="disclaimer">
-    <p>Parcela queries the <strong>official Catastro database</strong> (Ministerio de Hacienda). We search by municipality + street, then match by m². Results are candidates ranked by confidence — <strong>always verify on the official Catastro site before acting.</strong></p>
+    <p>Parcela checks official Spanish public property records — the same data used in every notarial deed and tax filing. Results are candidates ranked by confidence. <strong>Always verify before making any decisions.</strong></p>
   </div>
-  <button class="submit-btn" id="btn-listing" onclick="searchListing()">Find property in Catastro →</button>
+  <button class="submit-btn" id="btn-listing" onclick="searchListing()">Check this property →</button>
 </section>
 
 <!-- FORM: RC code -->
@@ -317,11 +317,11 @@ input:disabled { background:var(--paper-warm); color:var(--ink-faint); cursor:no
           oninput="updateRCLen()" style="font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;">
         <span class="rc-len" id="rc-len">0/20</span>
       </div>
-      <div class="field-hint">The 20-character code found in property documents, IBI receipts, or some listings. Also visible on idealista/maps for many properties.</div>
+      <div class="field-hint">The 20-character code found in property documents, IBI receipts, or some listings.</div>
     </div>
   </div>
   <div class="disclaimer">
-    <p>The cadastral reference (referencia catastral) uniquely identifies every property in Spain. If you can find it on the listing, official documents, or the Catastro map — this gives you the most accurate results instantly.</p>
+    <p>The property reference code (referencia catastral) uniquely identifies every registered property in Spain. If you have it — from documents, receipts, or the listing — this gives you the most accurate results instantly.</p>
   </div>
   <button class="submit-btn" id="btn-rc" onclick="searchRC()">Look up cadastral record →</button>
 </section>
@@ -343,22 +343,14 @@ input:disabled { background:var(--paper-warm); color:var(--ink-faint); cursor:no
     </div>
   </a>
   <div class="footer-legal">
-    Data sourced from Catastro — Dirección General del Catastro, Ministerio de Hacienda de España. Public data under INSPIRE directive.
-    Results are candidates, not definitive identifications. Always verify with official sources. © Parcela Intelligence.
+    Data sourced from official Spanish public property records under the INSPIRE directive.
+    Results are candidates, not definitive identifications. Always verify with official sources before making decisions. © Parcela Intelligence 2026.
   </div>
 </footer>
 
 <script>
-// ── PROVINCE LIST (exact Catastro names) ─────────────────────────────────────
-const PROVINCES = [
-  'A CORUÑA','ALACANT','ALBACETE','ALMERIA','ASTURIAS','AVILA','BADAJOZ',
-  'BARCELONA','BURGOS','CACERES','CADIZ','CANTABRIA','CASTELLO','CEUTA',
-  'CIUDAD REAL','CORDOBA','CUENCA','GIRONA','GRANADA','GUADALAJARA',
-  'HUELVA','HUESCA','ILLES BALEARS','JAEN','LA RIOJA','LAS PALMAS',
-  'LEON','LLEIDA','LUGO','MADRID','MALAGA','MELILLA','MURCIA','OURENSE',
-  'PALENCIA','PONTEVEDRA','S.C. TENERIFE','SALAMANCA','SEGOVIA','SEVILLA',
-  'SORIA','TARRAGONA','TERUEL','TOLEDO','VALENCIA','VALLADOLID','ZAMORA','ZARAGOZA'
-];
+// ── PROVINCE LIST — Balearic Islands only (beta) ─────────────────────────────
+const PROVINCES = ['ILLES BALEARS'];
 
 // State
 let selectedProvince = '';
@@ -366,6 +358,15 @@ let selectedMunicipality = '';
 let selectedStreetType = 'CL';
 let selectedStreetName = '';
 let muniDebounce, streetDebounce;
+
+// Auto-select province if only one option
+window.addEventListener('DOMContentLoaded', () => {
+  if (PROVINCES.length === 1) {
+    selectProvince(PROVINCES[0]);
+    document.getElementById('l-province').value = PROVINCES[0];
+    document.getElementById('l-province').disabled = true;
+  }
+});
 
 // ── PROVINCE AUTOCOMPLETE ─────────────────────────────────────────────────────
 function onProvinceInput() {
@@ -401,8 +402,7 @@ function onMuniInput() {
   if (!selectedProvince) return;
   clearTimeout(muniDebounce);
   const val = document.getElementById('l-municipality').value.trim();
-  if (val.length < 1) { closeDropdown('ac-municipality'); return; }
-  showDropdown('ac-municipality', null); // show loading
+  showDropdown('ac-municipality', null);
   muniDebounce = setTimeout(async () => {
     try {
       const r = await fetch(`/api/suggest?type=municipality&province=${encodeURIComponent(selectedProvince)}&q=${encodeURIComponent(val)}`);
@@ -411,19 +411,18 @@ function onMuniInput() {
         label: m, sub: '', onClick: () => selectMunicipality(m)
       })));
     } catch { closeDropdown('ac-municipality'); }
-  }, 250);
+  }, 200);
 }
 
 function selectMunicipality(name) {
   selectedMunicipality = name;
   document.getElementById('l-municipality').value = name;
   closeDropdown('ac-municipality');
-  document.getElementById('muni-hint').textContent = '✓ Selected from Catastro';
-  // Enable street field
+  document.getElementById('muni-hint').textContent = '✓ ' + name;
   const streetInput = document.getElementById('l-street');
   streetInput.disabled = false;
   streetInput.placeholder = 'Type street name…';
-  document.getElementById('street-hint').textContent = 'Start typing — we\'ll show exact Catastro street names';
+  document.getElementById('street-hint').textContent = 'Start typing to see verified street names';
   streetInput.value = '';
   selectedStreetName = '';
   selectedStreetType = 'CL';
@@ -455,7 +454,7 @@ function selectStreet(type, name) {
   document.getElementById('l-street').value = name;
   document.getElementById('l-street-type').value = type || 'CL';
   closeDropdown('ac-street');
-  document.getElementById('street-hint').textContent = `✓ ${type} ${name} — confirmed in Catastro`;
+  document.getElementById('street-hint').textContent = `✓ ${type} ${name}  — verified street name`;
 }
 
 // ── DROPDOWN HELPERS ──────────────────────────────────────────────────────────
@@ -708,7 +707,7 @@ function renderCandidate(c, idx, isTop, isDirect, query) {
 <div class="candidate ${isTop || isDirect ? 'top-match' : ''}">
   <div class="candidate-header">
     <div class="candidate-address">
-      <div class="candidate-address-label">Official Catastro address</div>
+      <div class="candidate-address-label">Official registered address</div>
       <div class="candidate-address-text">${addressDisplay}</div>
       ${muniDisplay ? `<div class="candidate-address-muni">${muniDisplay}</div>` : ''}
     </div>
@@ -745,7 +744,7 @@ function renderCandidate(c, idx, isTop, isDirect, query) {
 
   <div class="candidate-footer">
     <div class="rc-display">RC: ${rcFormatted}</div>
-    ${c.catastroUrl ? `<a class="catastro-link" href="${c.catastroUrl}" target="_blank" rel="noopener">View on Catastro →</a>` : ''}
+    ${c.catastroUrl ? `<a class="catastro-link" href="${c.catastroUrl}" target="_blank" rel="noopener">View official record →</a>` : ''}
   </div>
 </div>`;
 }
