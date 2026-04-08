@@ -907,7 +907,7 @@ function renderCard(c, query, isTop = true) {
     ${c.rc?`<div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ink-faint);letter-spacing:0.5px;">${c.rc}</div>`:''}
   </div>
 </div>
-<script>setTimeout(()=>initMap('${mapId}','${geocodeQuery.replace(/'/g,"\\'")}'),100);<\/script>`;
+<script>setTimeout(()=>initMap('${mapId}','${geocodeQuery.replace(/'/g,"\\'")}'),300);<\/script>`;
 }
 
 // LOADING STATE
@@ -945,39 +945,55 @@ async function initMap(mapId, addressQuery) {
   const el = document.getElementById(mapId);
   if (!el) return;
 
-  // Show loading state
   el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:var(--ink-faint);font-family:'JetBrains Mono',monospace;letter-spacing:1px;">${currentLang==='es'?'Cargando mapa…':'Loading map…'}</div>`;
 
   try {
-    // Geocode with Nominatim (free, no API key)
     const query = encodeURIComponent(addressQuery + ', Spain');
     const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1&countrycodes=es`, {
-      headers: { 'Accept-Language': 'es', 'User-Agent': 'Parcela/1.0' }
+      headers: { 'Accept-Language': 'es', 'User-Agent': 'Parcela/1.0 contact@parcela.app' }
     });
     const results = await r.json();
-    if (!results.length) { el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:var(--ink-faint);">${currentLang==='es'?'Mapa no disponible':'Map unavailable'}</div>`; return; }
 
-    const { lat, lon, display_name } = results[0];
-    el.innerHTML = ''; // clear loading
+    if (!results || !results.length) {
+      el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:var(--ink-faint);">${currentLang==='es'?'Mapa no disponible':'Map unavailable'}</div>`;
+      return;
+    }
 
-    const map = L.map(el, { zoomControl:true, attributionControl:false, scrollWheelZoom:false });
+    const lat = parseFloat(results[0].lat);
+    const lon = parseFloat(results[0].lon);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19
-    }).addTo(map);
+    // Clear div and ensure it has explicit pixel dimensions
+    el.innerHTML = '';
+    el.style.height = '240px';
+    el.style.width = '100%';
 
-    // Custom navy pin
-    const icon = L.divIcon({
-      html: `<div style="width:14px;height:14px;background:#1a56db;border:2px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
-      iconSize: [14, 14], iconAnchor: [7, 7], className: ''
+    const map = L.map(el, {
+      zoomControl: true,
+      attributionControl: true,
+      scrollWheelZoom: false,
+      dragging: true,
     });
 
-    L.marker([lat, lon], { icon }).addTo(map);
+    // Use OpenStreetMap standard tiles (most reliable, no API key)
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
     map.setView([lat, lon], 16);
 
-    // Prevent map from stealing page scroll on mobile
-    map.on('focus', () => map.scrollWheelZoom.enable());
-    map.on('blur', () => map.scrollWheelZoom.disable());
+    // Custom blue pin
+    const icon = L.divIcon({
+      html: `<div style="width:16px;height:16px;background:#1a56db;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(26,86,219,0.5);"></div>`,
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
+      className: ''
+    });
+    L.marker([lat, lon], { icon }).addTo(map);
+
+    // Force tile redraw after a short delay (fixes blank tile issue)
+    setTimeout(() => { map.invalidateSize(); }, 200);
+    setTimeout(() => { map.invalidateSize(); }, 600);
 
   } catch(e) {
     el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:var(--ink-faint);">${currentLang==='es'?'Mapa no disponible':'Map unavailable'}</div>`;
