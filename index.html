@@ -81,7 +81,8 @@ input:disabled{background:var(--surface);color:var(--ink-faint);cursor:not-allow
 #results{max-width:720px;margin:0 auto;padding:0 2rem 4rem;}
 .results-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:1.5rem;padding-top:2rem;border-top:1px solid var(--border);}
 .results-title{font-size:18px;font-weight:600;color:var(--navy);letter-spacing:-0.02em;}
-.results-meta{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ink-faint);letter-spacing:0.5px;}
+.results-meta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--blue);font-weight:600;letter-spacing:0.5px;}
+.conf-pill{display:inline-flex;align-items:center;gap:5px;background:var(--blue-pale);color:var(--blue);font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;padding:3px 8px;border-radius:2px;letter-spacing:0.5px;}
 
 /* DATA */
 .data-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1rem;}
@@ -159,10 +160,18 @@ footer{border-top:1px solid var(--border);padding:1.5rem 2rem;display:flex;align
 }
 @media print {
   nav, .hero, .form-section, footer, #lang-btn, .nav-badge, .print-btn { display:none !important; }
-  body { background:#fff; }
+  body { background:#fff; font-size:11px; }
   #results { padding:0 !important; max-width:100% !important; }
   .flag-row, .insight-row { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  #print-header { display:flex !important; }
+  .print-only { display:block !important; }
+  .screen-only { display:none !important; }
+  .print-candidate { page-break-inside:avoid; }
+  .print-candidate + .print-candidate { border-top:2px solid #e2e8f0; margin-top:2rem; padding-top:2rem; }
+  @page { margin:1.5cm; }
 }
+.print-only { display:none; }
+#print-header { display:none; align-items:center; justify-content:space-between; padding-bottom:1rem; margin-bottom:1.5rem; border-bottom:2px solid var(--navy); }
 </style>
 </head>
 <body>
@@ -305,6 +314,27 @@ footer{border-top:1px solid var(--border);padding:1.5rem 2rem;display:flex;align
   </div>
   <button class="submit-btn" id="btn-listing" onclick="searchListing()">Check this property →</button>
 </section>
+
+<!-- PRINT HEADER (hidden on screen, shows on print) -->
+<div id="print-header">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div style="width:32px;height:32px;background:#1a56db;display:flex;align-items:center;justify-content:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
+      <svg width="16" height="20" viewBox="0 0 14 18" fill="none">
+        <path d="M2 1H9C11.7614 1 14 3.23858 14 6C14 8.76142 11.7614 11 9 11H2V1Z" stroke="white" stroke-width="1.5" fill="none"/>
+        <path d="M2 11V17" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="9" cy="6" r="1.8" fill="white"/>
+      </svg>
+    </div>
+    <div>
+      <div style="font-size:16px;font-weight:700;color:#0a1628;letter-spacing:-0.02em;">Parcela</div>
+      <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8;font-family:'JetBrains Mono',monospace;">Property Intelligence</div>
+    </div>
+  </div>
+  <div style="text-align:right;">
+    <div id="print-date" style="font-size:10px;color:#94a3b8;font-family:'JetBrains Mono',monospace;"></div>
+    <div style="font-size:10px;color:#94a3b8;margin-top:2px;">parcela.vercel.app</div>
+  </div>
+</div>
 
 <!-- RESULTS -->
 <div id="results" style="padding:0 2rem;"></div>
@@ -453,9 +483,9 @@ function toggleLang() {
   document.getElementById('street-hint').textContent = T.streetHint;
   setHTML('footer-legal-text', T.footer);
 
-  // Re-render results if visible
   if (window._lastResult) {
     renderResults(window._lastResult.data, window._lastResult.query);
+    document.getElementById('results').scrollIntoView({ behavior:'smooth', block:'start' });
   }
 }
 
@@ -696,26 +726,42 @@ function renderResults(data, query) {
   if (candidates.length === 0) {
     el.innerHTML = `
       <div class="results-header">
-        <div class="results-title">No match found</div>
+        <div class="results-title">${currentLang==='es'?'Sin resultados':'No match found'}</div>
       </div>
       <div class="no-results">
-        <div class="no-results-title">We couldn't find a matching property</div>
+        <div class="no-results-title">${currentLang==='es'?'No encontramos ninguna propiedad':'We couldn\'t find a matching property'}</div>
         <div class="no-results-sub">
-          Try these:<br><br>
-          — Select a different street from the dropdown<br>
-          — Check the m² — use the constructed area (superficie construida), not usable area<br>
-          — Some very new or rural properties may not be in the database yet
+          ${currentLang==='es'?'— Selecciona otra calle del desplegable<br>— Comprueba los m² — usa la superficie construida, no la útil<br>— Algunas propiedades rurales o muy recientes pueden no estar en la base de datos':'— Select a different street from the dropdown<br>— Check the m² — use the constructed area (superficie construida), not usable area<br>— Some very new or rural properties may not be in the database yet'}
         </div>
       </div>`;
     return;
   }
 
-  const c = candidates[0]; // top match only
-  el.innerHTML = renderCard(c, query);
+  // Set print date
+  const printDate = document.getElementById('print-date');
+  if (printDate) printDate.textContent = new Date().toLocaleDateString(currentLang==='es'?'es-ES':'en-GB', {day:'numeric',month:'long',year:'numeric'});
+
+  // Screen: show top 1. Print: show all (rendered as hidden divs that appear on print)
+  const top = candidates[0];
+  const rest = candidates.slice(1);
+
+  let html = `<div class="print-candidate">${renderCard(top, query, true)}</div>`;
+
+  if (rest.length > 0) {
+    const otherLabel = currentLang === 'es'
+      ? `Otras ${rest.length} posible${rest.length>1?'s':''} coincidencia${rest.length>1?'s':''}`
+      : `${rest.length} other possible match${rest.length>1?'es':''}`;
+    html += `<div class="print-only" style="margin-top:2rem;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--ink-faint);margin-bottom:1rem;padding-top:1rem;border-top:1px solid var(--border);">${otherLabel}</div>
+      ${rest.map(c => `<div class="print-candidate">${renderCard(c, query, false)}</div>`).join('')}
+    </div>`;
+  }
+
+  el.innerHTML = html;
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function renderCard(c, query) {
+function renderCard(c, query, isTop = true) {
   const T = t[currentLang];
   const cd = c.cadastralData || {};
   const ac = c.addressComponents || {};
@@ -821,10 +867,13 @@ function renderCard(c, query) {
   return `
 <div style="padding-top:2rem;border-top:1px solid var(--border);margin-top:1rem;">
   <div class="results-header" style="margin-bottom:1.5rem;padding-top:0;border-top:none;">
-    <div class="results-title">${T.reportTitle}</div>
     <div style="display:flex;align-items:center;gap:10px;">
-      <div class="results-meta">${c.matchScore ? T.confHigh(c.matchScore) : T.confMatch}</div>
-      <button class="print-btn" onclick="window.print()" style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;border:1px solid var(--border-mid);background:none;color:var(--ink-muted);cursor:pointer;border-radius:2px;white-space:nowrap;">${T.downloadPdf}</button>
+      <div class="results-title">${isTop ? T.reportTitle : (currentLang==='es'?'Posible coincidencia':'Possible match')}</div>
+      ${!isTop ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 7px;border:1px solid var(--border-mid);color:var(--ink-faint);border-radius:2px;">${currentLang==='es'?'sólo en PDF':'PDF only'}</span>` : ''}
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      ${c.matchScore ? `<span class="conf-pill">● ${c.matchScore}%</span>` : ''}
+      ${isTop ? `<button class="print-btn screen-only" onclick="window.print()" style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;border:1px solid var(--border-mid);background:none;color:var(--ink-muted);cursor:pointer;border-radius:2px;white-space:nowrap;">${T.downloadPdf}</button>` : ''}
     </div>
   </div>
   <div style="display:grid;grid-template-columns:${photoUrl?'140px 1fr':'1fr'};gap:1.25rem;margin-bottom:1.5rem;align-items:start;">
