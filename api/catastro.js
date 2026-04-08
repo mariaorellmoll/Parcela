@@ -179,53 +179,43 @@ async function searchByStreet({ provName, muniName, sigla, streetName, m2, floor
     throw new Error('Found properties but could not fetch their details. Please try again.');
   }
 
-  // Step 4: Filter and score by m²
-  // For buildings with multiple units, check sub-unit m² too
-  const m2Min = m2 * 0.85;
-  const m2Max = m2 * 1.15;
-
+  // Step 4: Score all properties by m² proximity — no hard filter
+  // The user sees all candidates ranked by how close the m² is to what they entered
   const getEffectiveM2 = (p) => {
-    // If the parcel has sub-units, find the one closest to the target m²
     if (p.subUnits && p.subUnits.length > 0) {
-      const match = p.subUnits.reduce((best, u) =>
-        Math.abs(u.m2 - m2) < Math.abs((best?.m2 || Infinity) - m2) ? u : best, null);
-      if (match) return match.m2;
+      return p.subUnits.reduce((best, u) =>
+        Math.abs(u.m2 - m2) < Math.abs((best?.m2 || Infinity) - m2) ? u : best, null)?.m2;
     }
     return p.cadastralData?.builtAreaM2;
   };
 
-  let matched = valid.filter(p => {
-    const eff = getEffectiveM2(p);
-    return !eff || (eff >= m2Min && eff <= m2Max);
-  });
-
-  // If nothing in tolerance, return closest anyway
-  if (matched.length === 0) {
-    matched = [...valid].sort((a, b) => {
-      const da = Math.abs((getEffectiveM2(a) || 0) - m2);
-      const db = Math.abs((getEffectiveM2(b) || 0) - m2);
-      return da - db;
-    }).slice(0, 3);
-  }
-
-  const scored = matched.map(p => {
+  const scored = valid.map(p => {
     const eff = getEffectiveM2(p);
     const yr = p.cadastralData?.yearBuilt;
-    let score = 70;
-    if (eff) score += Math.round((1 - Math.min(Math.abs(eff - m2) / m2, 1)) * 25);
+    let score = 60;
+
+    // m² score — closer = higher score (up to +35 points)
+    if (eff) {
+      const diffPct = Math.abs(eff - m2) / m2;
+      score += Math.round((1 - Math.min(diffPct, 1)) * 35);
+    }
+    // Year built bonus
     if (year_built && yr) {
       const d = Math.abs(yr - parseInt(year_built));
       score += d === 0 ? 10 : d <= 2 ? 7 : d <= 5 ? 3 : 0;
     }
+    // Floor match bonus
     if (floor && p.addressComponents?.floor) {
       const pf = String(p.addressComponents.floor).toLowerCase();
       const qf = String(floor).toLowerCase();
       if (pf === qf || pf.includes(qf) || qf.includes(pf)) score += 5;
     }
-    // Boost score if a sub-unit matches exactly
-    if (p.subUnits && eff && Math.abs(eff - m2) < 5) score += 5;
+
     return { ...p, matchScore: Math.min(100, Math.max(0, score)), effectiveM2: eff };
   });
+
+  scored.sort((a, b) => b.matchScore - a.matchScore);
+  return scored.slice(0, 5);
 
   scored.sort((a, b) => b.matchScore - a.matchScore);
   return scored.slice(0, 5);
