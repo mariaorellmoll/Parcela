@@ -148,6 +148,20 @@ input::placeholder{color:var(--ink-faint);}
 footer{border-top:0.5px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;}
 .footer-legal{font-family:'DM Mono',monospace;font-size:8px;color:var(--ink-faint);line-height:1.7;max-width:600px;}
 
+/* AUTOCOMPLETE */
+.autocomplete-wrap { position: relative; }
+.ac-dropdown { display:none; position:absolute; top:100%; left:0; right:0; z-index:200;
+  background:var(--paper); border:0.5px solid var(--border-mid); border-top:none;
+  max-height:220px; overflow-y:auto; }
+.ac-dropdown.open { display:block; }
+.ac-item { padding:9px 12px; font-size:13px; color:var(--ink); cursor:pointer;
+  border-bottom:0.5px solid var(--border); transition:background 0.1s; }
+.ac-item:hover, .ac-item.active { background:var(--green-light); }
+.ac-item span.ac-sub { font-size:11px; color:var(--ink-muted); margin-left:6px; }
+.ac-loading { padding:9px 12px; font-size:12px; color:var(--ink-faint); font-style:italic; }
+.ac-empty { padding:9px 12px; font-size:12px; color:var(--ink-faint); }
+input:disabled { background:var(--paper-warm); color:var(--ink-faint); cursor:not-allowed; }
+
 @media(max-width:600px){
   .field-grid,.field-grid.three{grid-template-columns:1fr;}
   .data-grid{grid-template-columns:1fr 1fr;}
@@ -240,52 +254,49 @@ footer{border-top:0.5px solid var(--border);padding:1.5rem 2rem;display:flex;ali
 
   <div class="field-grid">
     <div class="field">
-      <label class="field-label">Municipality <span class="required">*</span></label>
-      <input id="l-municipality" type="text" placeholder="e.g. Palma, Barcelona, Madrid" autocomplete="off">
-      <div class="field-hint">Official Catastro name — try short form first (e.g. "Palma" not "Palma de Mallorca")</div>
+      <label class="field-label">Province <span class="required">*</span></label>
+      <div class="autocomplete-wrap" id="wrap-province">
+        <input id="l-province" type="text" placeholder="e.g. Illes Balears, Madrid…" autocomplete="off"
+          oninput="onProvinceInput()" onfocus="onProvinceInput()">
+        <div class="ac-dropdown" id="ac-province"></div>
+      </div>
     </div>
     <div class="field">
-      <label class="field-label">Province</label>
-      <input id="l-province" type="text" placeholder="e.g. Baleares" autocomplete="off">
-      <div class="field-hint">Helps narrow results — optional</div>
+      <label class="field-label">Municipality <span class="required">*</span></label>
+      <div class="autocomplete-wrap" id="wrap-municipality">
+        <input id="l-municipality" type="text" placeholder="Select province first…" autocomplete="off"
+          oninput="onMuniInput()" onfocus="onMuniInput()" disabled>
+        <div class="ac-dropdown" id="ac-municipality"></div>
+      </div>
+      <div class="field-hint" id="muni-hint">Select a province first</div>
     </div>
   </div>
 
-  <div class="field-grid">
+  <div class="field-grid full">
     <div class="field">
-      <label class="field-label">Street type</label>
-      <select id="l-street-type">
-        <option value="CL">Calle (CL)</option>
-        <option value="AV">Avenida (AV)</option>
-        <option value="PZ">Plaza (PZ)</option>
-        <option value="PS">Paseo (PS)</option>
-        <option value="CR">Carretera (CR)</option>
-        <option value="RD">Ronda (RD)</option>
-        <option value="TV">Travesía (TV)</option>
-        <option value="CM">Camino (CM)</option>
-        <option value="UR">Urbanización (UR)</option>
-        <option value="">Other / unknown</option>
-      </select>
-    </div>
-    <div class="field">
-      <label class="field-label">Street name</label>
-      <input id="l-street" type="text" placeholder="e.g. Sant Miquel, Mèxic" autocomplete="off">
-      <div class="field-hint">Just the name — or include the type (e.g. "Avenida Mèxic") and we'll detect it. Leave blank to search whole municipality.</div>
+      <label class="field-label">Street name <span class="required">*</span></label>
+      <div class="autocomplete-wrap" id="wrap-street">
+        <input id="l-street" type="text" placeholder="Select municipality first…" autocomplete="off"
+          oninput="onStreetInput()" onfocus="onStreetInput()" disabled>
+        <div class="ac-dropdown" id="ac-street"></div>
+      </div>
+      <div class="field-hint" id="street-hint">Select a municipality first</div>
     </div>
   </div>
+  <input type="hidden" id="l-street-type" value="CL">
 
   <div class="field-grid three">
     <div class="field">
       <label class="field-label">Built area m² <span class="required">*</span></label>
       <input id="l-m2" type="number" placeholder="e.g. 120" min="10" max="2000">
-      <div class="field-hint">Constructed m² from listing</div>
+      <div class="field-hint">Constructed m² from the listing</div>
     </div>
     <div class="field">
-      <label class="field-label">Floor</label>
+      <label class="field-label">Floor <span style="color:var(--ink-faint);font-size:9px;">(optional)</span></label>
       <input id="l-floor" type="text" placeholder="e.g. 3, bajo, ático">
     </div>
     <div class="field">
-      <label class="field-label">Year built</label>
+      <label class="field-label">Year built <span style="color:var(--ink-faint);font-size:9px;">(optional)</span></label>
       <input id="l-year" type="number" placeholder="e.g. 1985" min="1800" max="2025">
     </div>
   </div>
@@ -338,7 +349,155 @@ footer{border-top:0.5px solid var(--border);padding:1.5rem 2rem;display:flex;ali
 </footer>
 
 <script>
-// TAB SWITCHING
+// ── PROVINCE LIST (exact Catastro names) ─────────────────────────────────────
+const PROVINCES = [
+  'A CORUÑA','ALACANT','ALBACETE','ALMERIA','ASTURIAS','AVILA','BADAJOZ',
+  'BARCELONA','BURGOS','CACERES','CADIZ','CANTABRIA','CASTELLO','CEUTA',
+  'CIUDAD REAL','CORDOBA','CUENCA','GIRONA','GRANADA','GUADALAJARA',
+  'HUELVA','HUESCA','ILLES BALEARS','JAEN','LA RIOJA','LAS PALMAS',
+  'LEON','LLEIDA','LUGO','MADRID','MALAGA','MELILLA','MURCIA','OURENSE',
+  'PALENCIA','PONTEVEDRA','S.C. TENERIFE','SALAMANCA','SEGOVIA','SEVILLA',
+  'SORIA','TARRAGONA','TERUEL','TOLEDO','VALENCIA','VALLADOLID','ZAMORA','ZARAGOZA'
+];
+
+// State
+let selectedProvince = '';
+let selectedMunicipality = '';
+let selectedStreetType = 'CL';
+let selectedStreetName = '';
+let muniDebounce, streetDebounce;
+
+// ── PROVINCE AUTOCOMPLETE ─────────────────────────────────────────────────────
+function onProvinceInput() {
+  const val = document.getElementById('l-province').value.toUpperCase().trim();
+  const matches = val.length === 0
+    ? PROVINCES.slice(0, 10)
+    : PROVINCES.filter(p => p.includes(val)).slice(0, 10);
+  showDropdown('ac-province', matches.map(p => ({
+    label: p, sub: '', onClick: () => selectProvince(p)
+  })));
+}
+
+function selectProvince(name) {
+  selectedProvince = name;
+  document.getElementById('l-province').value = name;
+  closeDropdown('ac-province');
+  // Enable municipality field
+  const muniInput = document.getElementById('l-municipality');
+  muniInput.disabled = false;
+  muniInput.placeholder = 'Type municipality name…';
+  document.getElementById('muni-hint').textContent = 'Start typing to search';
+  muniInput.value = '';
+  selectedMunicipality = '';
+  // Disable street
+  document.getElementById('l-street').disabled = true;
+  document.getElementById('l-street').value = '';
+  document.getElementById('street-hint').textContent = 'Select a municipality first';
+  selectedStreetName = '';
+}
+
+// ── MUNICIPALITY AUTOCOMPLETE ─────────────────────────────────────────────────
+function onMuniInput() {
+  if (!selectedProvince) return;
+  clearTimeout(muniDebounce);
+  const val = document.getElementById('l-municipality').value.trim();
+  if (val.length < 1) { closeDropdown('ac-municipality'); return; }
+  showDropdown('ac-municipality', null); // show loading
+  muniDebounce = setTimeout(async () => {
+    try {
+      const r = await fetch(`/api/suggest?type=municipality&province=${encodeURIComponent(selectedProvince)}&q=${encodeURIComponent(val)}`);
+      const data = await r.json();
+      showDropdown('ac-municipality', (data.results || []).map(m => ({
+        label: m, sub: '', onClick: () => selectMunicipality(m)
+      })));
+    } catch { closeDropdown('ac-municipality'); }
+  }, 250);
+}
+
+function selectMunicipality(name) {
+  selectedMunicipality = name;
+  document.getElementById('l-municipality').value = name;
+  closeDropdown('ac-municipality');
+  document.getElementById('muni-hint').textContent = '✓ Selected from Catastro';
+  // Enable street field
+  const streetInput = document.getElementById('l-street');
+  streetInput.disabled = false;
+  streetInput.placeholder = 'Type street name…';
+  document.getElementById('street-hint').textContent = 'Start typing — we\'ll show exact Catastro street names';
+  streetInput.value = '';
+  selectedStreetName = '';
+  selectedStreetType = 'CL';
+}
+
+// ── STREET AUTOCOMPLETE ───────────────────────────────────────────────────────
+function onStreetInput() {
+  if (!selectedProvince || !selectedMunicipality) return;
+  clearTimeout(streetDebounce);
+  const val = document.getElementById('l-street').value.trim();
+  if (val.length < 2) { closeDropdown('ac-street'); return; }
+  showDropdown('ac-street', null); // loading
+  streetDebounce = setTimeout(async () => {
+    try {
+      const r = await fetch(`/api/suggest?type=street&province=${encodeURIComponent(selectedProvince)}&municipality=${encodeURIComponent(selectedMunicipality)}&q=${encodeURIComponent(val)}`);
+      const data = await r.json();
+      showDropdown('ac-street', (data.results || []).map(s => ({
+        label: s.name,
+        sub: s.type,
+        onClick: () => selectStreet(s.type, s.name)
+      })));
+    } catch { closeDropdown('ac-street'); }
+  }, 300);
+}
+
+function selectStreet(type, name) {
+  selectedStreetType = type || 'CL';
+  selectedStreetName = name;
+  document.getElementById('l-street').value = name;
+  document.getElementById('l-street-type').value = type || 'CL';
+  closeDropdown('ac-street');
+  document.getElementById('street-hint').textContent = `✓ ${type} ${name} — confirmed in Catastro`;
+}
+
+// ── DROPDOWN HELPERS ──────────────────────────────────────────────────────────
+function showDropdown(id, items) {
+  const el = document.getElementById(id);
+  if (items === null) {
+    el.innerHTML = '<div class="ac-loading">Searching…</div>';
+    el.classList.add('open');
+    return;
+  }
+  if (items.length === 0) {
+    el.innerHTML = '<div class="ac-empty">No results found</div>';
+    el.classList.add('open');
+    return;
+  }
+  el.innerHTML = items.map((item, i) =>
+    `<div class="ac-item" onclick="${item.onClick.toString().replace(/"/g,"'")}">
+      ${item.label}${item.sub ? `<span class="ac-sub">${item.sub}</span>` : ''}
+    </div>`
+  ).join('');
+  // Re-attach click handlers properly
+  el.querySelectorAll('.ac-item').forEach((div, i) => {
+    div.onclick = items[i].onClick;
+  });
+  el.classList.add('open');
+}
+
+function closeDropdown(id) {
+  const el = document.getElementById(id);
+  if (el) { el.classList.remove('open'); el.innerHTML = ''; }
+}
+
+// Close dropdowns on outside click
+document.addEventListener('click', (e) => {
+  ['province','municipality','street'].forEach(f => {
+    if (!document.getElementById('wrap-' + f)?.contains(e.target)) {
+      closeDropdown('ac-' + f);
+    }
+  });
+});
+
+// ── TAB SWITCHING ─────────────────────────────────────────────────────────────
 function setTab(tab) {
   document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='listing')||(i===1&&tab==='rc')));
   document.getElementById('form-listing').classList.toggle('active', tab==='listing');
@@ -354,15 +513,17 @@ function updateRCLen() {
 
 // SEARCH FROM LISTING
 async function searchListing() {
-  const municipality  = document.getElementById('l-municipality').value.trim();
-  const province      = document.getElementById('l-province').value.trim();
-  const street        = document.getElementById('l-street').value.trim();
-  const street_type   = document.getElementById('l-street-type').value.trim();
+  const province      = selectedProvince || document.getElementById('l-province').value.trim();
+  const municipality  = selectedMunicipality || document.getElementById('l-municipality').value.trim();
+  const street        = selectedStreetName || document.getElementById('l-street').value.trim();
+  const street_type   = selectedStreetType || document.getElementById('l-street-type').value || 'CL';
   const m2            = document.getElementById('l-m2').value.trim();
   const floor         = document.getElementById('l-floor').value.trim();
   const year_built    = document.getElementById('l-year').value.trim();
 
-  if (!municipality) return showError('Municipality is required. Enter the full name in Spanish — e.g. "Palma de Mallorca", "Barcelona", "Madrid".');
+  if (!province) return showError('Please select a province from the dropdown.');
+  if (!municipality) return showError('Please select a municipality from the dropdown.');
+  if (!street) return showError('Please select a street from the dropdown.');
   if (!m2) return showError('Built area (m²) is required — it\'s how we match the property in Catastro.');
 
   const btn = document.getElementById('btn-listing');
