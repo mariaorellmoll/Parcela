@@ -257,35 +257,39 @@ async function resolveStreetName(provName, muniName, sigla, streetName) {
 
 // ── STEP 2: Get all RCs on a street ──────────────────────────────────────────
 async function getAllRCsOnStreet(provName, muniName, sigla, streetName) {
-  // ConsultaNumero returns numbers near the requested number.
-  // Call with multiple anchors to cover the full street range.
-  // ConsultaNumero returns ~8 nearest numbers to the anchor.
+  // Consulta_DNPLOC with a specific number returns the exact property (direct hit)
+  // OR nearby numbers (up to 8) if that number doesn't exist.
+  // By querying numbers 1,5,10,15,20,25,30,40,50,75,100 in parallel,
+  // the "nearby" responses together cover every number on the street.
+
   const makeUrl = (num) =>
-    `${BASE}/OVCCallejero.asmx/ConsultaNumero` +
+    `${BASE}/OVCCallejero.asmx/Consulta_DNPLOC` +
     `?Provincia=${enc(provName)}&Municipio=${enc(muniName)}` +
-    `&TipoVia=${enc(sigla)}&NomVia=${enc(streetName)}&Numero=${num}`;
+    `&Sigla=${enc(sigla)}&Calle=${enc(streetName)}` +
+    `&Numero=${num}&Bloque=&Escalera=&Planta=&Puerta=`;
 
-  const xmlResults = await Promise.all([
-    fetchXML(makeUrl(1)),
-    fetchXML(makeUrl(10)),
-    fetchXML(makeUrl(20)),
-    fetchXML(makeUrl(50)),
-  ]);
+  const numbers = [1, 5, 10, 15, 20, 25, 30, 40, 50, 75, 100];
+  const xmlResults = await Promise.all(numbers.map(n => fetchXML(makeUrl(n))));
 
-  const extractRCs = (xml) => {
-    if (!xml) return [];
-    const rcs = [];
+  const rcs = new Set();
+  for (const xml of xmlResults) {
+    if (!xml) continue;
+    // List response (number doesn't exist — returns nearby <nump> blocks)
     for (const m of xml.matchAll(/<nump>([\s\S]*?)<\/nump>/gi)) {
-      const block = m[1];
-      const pc1 = block.match(/<pc1>([^<]+)<\/pc1>/i)?.[1]?.trim();
-      const pc2 = block.match(/<pc2>([^<]+)<\/pc2>/i)?.[1]?.trim();
-      if (pc1 && pc2) rcs.push((pc1 + pc2).toUpperCase());
+      const b = m[1];
+      const pc1 = b.match(/<pc1>([^<]+)<\/pc1>/i)?.[1]?.trim();
+      const pc2 = b.match(/<pc2>([^<]+)<\/pc2>/i)?.[1]?.trim();
+      if (pc1 && pc2) rcs.add((pc1 + pc2).toUpperCase());
     }
-    return rcs;
-  };
-
-  const all = xmlResults.flatMap(extractRCs);
-  return [...new Set(all)];
+    // Direct response (exact number found — returns <bi> blocks)
+    for (const m of xml.matchAll(/<bi>([\s\S]*?)<\/bi>/gi)) {
+      const b = m[1];
+      const pc1 = b.match(/<pc1>([^<]+)<\/pc1>/i)?.[1]?.trim();
+      const pc2 = b.match(/<pc2>([^<]+)<\/pc2>/i)?.[1]?.trim();
+      if (pc1 && pc2) rcs.add((pc1 + pc2).toUpperCase());
+    }
+  }
+  return [...rcs];
 }
 
 // ── RC LOOKUP ────────────────────────────────────────────────────────────────
