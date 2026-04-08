@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Parcela — Property Intelligence</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%231a56db'/><path d='M7 4h9a7 7 0 010 14H7V4z' stroke='white' stroke-width='2' fill='none'/><path d='M7 18v10' stroke='white' stroke-width='2' stroke-linecap='round'/><circle cx='16' cy='11' r='3' fill='white'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -155,6 +156,12 @@ footer{border-top:1px solid var(--border);padding:1.5rem 2rem;display:flex;align
   .hero,.form-section{padding-left:1.25rem;padding-right:1.25rem;}
   #results{padding-left:1.25rem;padding-right:1.25rem;}
   .how-it-works{flex-direction:column;gap:1rem;}
+}
+@media print {
+  nav, .hero, .form-section, footer, #lang-btn, .nav-badge, .print-btn { display:none !important; }
+  body { background:#fff; }
+  #results { padding:0 !important; max-width:100% !important; }
+  .flag-row, .insight-row { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 }
 </style>
 </head>
@@ -309,11 +316,12 @@ footer{border-top:1px solid var(--border);padding:1.5rem 2rem;display:flex;align
       <svg width="11" height="14" viewBox="0 0 14 18" fill="none">
         <path d="M2 1H9C11.7614 1 14 3.23858 14 6C14 8.76142 11.7614 11 9 11H2V1Z" stroke="white" stroke-width="1.5" fill="none"/>
         <path d="M2 11V17" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="9" cy="6" r="1.4" fill="white"/>
       </svg>
     </div>
     <span style="font-size:13px;font-weight:600;color:var(--ink-muted);">Parcela</span>
   </a>
-  <div class="footer-legal">
+  <div class="footer-legal" id="footer-legal-text">
     Data sourced from official Spanish public property records under the INSPIRE directive.
     Results are indicative — always verify with official sources and instruct a solicitor before exchanging contracts. © Parcela 2026.
   </div>
@@ -330,9 +338,45 @@ const t = {
     pricehint: 'In euros — for price analysis',
     disclaimer: 'Parcela checks official Spanish public property records — the same data used in every notarial deed and tax filing. Results are candidates ranked by confidence. <strong>Always verify before making any decisions.</strong>',
     btn: 'Check this property →',
-    provinceHint: 'Select a province first', muniHint: 'Select a province first',
-    streetHint: 'Select a municipality first',
+    muniHint: 'Select a province first', streetHint: 'Select a municipality first',
     loading: ['Searching…', 'Matching property records…', 'Running analysis…'],
+    // Result card
+    reportTitle: 'Property report', regAddress: 'Registered address',
+    constructionBreakdown: 'Construction breakdown',
+    useCol: 'Use', floorCol: 'Floor', m2Col: 'm²',
+    disclaimer2: 'Based on official public property records. Always instruct a solicitor before exchanging contracts.',
+    downloadPdf: '↓ Download PDF',
+    footer: 'Data sourced from official Spanish public property records under the INSPIRE directive. Results are indicative — always verify with official sources and instruct a solicitor before exchanging contracts. © Parcela 2026.',
+    // Verdict templates
+    verdictMatch: (reg, listed) => `The registered area matches the listing — ${reg} m² officially recorded vs ${listed} m² advertised. No discrepancy.`,
+    verdictWarn: (reg, listed, diff, dir) => `The official record shows ${reg} m² — ${diff}% ${dir} than the ${listed} m² advertised. Ask the seller which figure the price is based on.`,
+    verdictAlert: (reg, listed, diff, dir, msg) => `Significant gap: officially ${reg} m² vs ${listed} m² listed — ${diff}% ${dir}. ${msg}`,
+    verdictAlertMsgSmaller: `You may be paying for space that doesn't officially exist.`,
+    verdictAlertMsgLarger: `The property may be larger than advertised — verify the price per m².`,
+    // Insights
+    nonResTitle: 'Non-residential use registered',
+    nonResBody: (use) => `This property is officially registered as <strong>${use}</strong>. If you intend to use it as a home, a change-of-use permit (licencia de cambio de uso) will be required — a process that can take 6–18 months and cost €5,000–20,000+.`,
+    resTitle: 'Residential use confirmed',
+    resBody: (use) => `Registered as <strong>${use}</strong> — consistent with a residential purchase.`,
+    iteTitle: 'ITE inspection likely required',
+    iteBody: (yr, age) => `Built in ${yr} — ${age} years old. Buildings over 50 years in Spain require a Technical Building Inspection (ITE/IEE). Ask the seller for the most recent ITE report before making an offer.`,
+    iteApprTitle: 'Approaching inspection age',
+    iteApprBody: (yr, age, left) => `Built in ${yr} (${age} years old). An ITE will be required within the next ${left} years. Factor potential costs into your offer.`,
+    iteOkTitle: 'Relatively recent construction',
+    iteOkBody: (yr, age) => `Built in ${yr} (${age} years old). No mandatory ITE inspection required yet.`,
+    catValTitle: 'Tax reference value',
+    catValBody: (val, perM2) => `The official cadastral value is <strong>€${val}</strong> (≈ €${perM2}/m²). This is the base used for IBI property tax — typically well below market value. If the sale price is close to this figure, the transaction may attract additional tax scrutiny.`,
+    priceMultTitle: 'Price vs tax reference',
+    priceMultBody: (price, mult, ctx) => `Asking <strong>€${price}</strong> is <strong>${mult}× the official cadastral value</strong> — ${ctx}. Multipliers of 3–6× are most common in Mallorca and Ibiza.`,
+    priceCtxLow: 'unusually low — this could indicate an undervaluation or undeclared works',
+    priceCtxNorm: 'within the typical range for the Balearics',
+    priceCtxHigh: 'above typical — ensure the property justifies the premium',
+    priceM2Title: 'Price per m² depends on which area you use',
+    priceM2Body: (listedM2, priceOnListed, regM2, priceOnReg) => `If the price is based on the listed <strong>${listedM2} m²</strong> that's €${priceOnListed}/m². Based on the officially registered <strong>${regM2} m²</strong> it's €${priceOnReg}/m². Clarify with the seller before signing.`,
+    leverageTitle: 'Potential negotiation leverage',
+    leverageBody: (diff, listed, reg) => `The official area is ${diff}% smaller than advertised. If the asking price is based on ${listed} m², you may be able to negotiate based on the officially registered ${reg} m².`,
+    confHigh: (score) => `${score}% match confidence`,
+    confMatch: 'Match found',
   },
   es: {
     province: 'Provincia', municipality: 'Municipio', street: 'Nombre de la calle',
@@ -341,9 +385,43 @@ const t = {
     pricehint: 'En euros — para análisis de precio',
     disclaimer: 'Parcela consulta los registros públicos oficiales de la propiedad en España — los mismos datos que figuran en escrituras y declaraciones fiscales. Los resultados son candidatos ordenados por confianza. <strong>Verifica siempre antes de tomar decisiones.</strong>',
     btn: 'Consultar esta propiedad →',
-    provinceHint: 'Selecciona primero una provincia', muniHint: 'Selecciona primero una provincia',
-    streetHint: 'Selecciona primero un municipio',
+    muniHint: 'Selecciona primero una provincia', streetHint: 'Selecciona primero un municipio',
     loading: ['Buscando…', 'Cotejando registros…', 'Analizando…'],
+    // Result card
+    reportTitle: 'Informe de la propiedad', regAddress: 'Dirección registrada',
+    constructionBreakdown: 'Desglose de construcción',
+    useCol: 'Uso', floorCol: 'Planta', m2Col: 'm²',
+    disclaimer2: 'Basado en registros oficiales de la propiedad. Consulta siempre a un abogado antes de firmar ningún contrato.',
+    downloadPdf: '↓ Descargar PDF',
+    footer: 'Datos procedentes de los registros públicos oficiales de la propiedad en España bajo la directiva INSPIRE. Los resultados son orientativos — verifica siempre con fuentes oficiales. © Parcela 2026.',
+    verdictMatch: (reg, listed) => `La superficie registrada coincide con el anuncio — ${reg} m² registrados oficialmente frente a ${listed} m² anunciados. Sin discrepancia.`,
+    verdictWarn: (reg, listed, diff, dir) => `El registro oficial indica ${reg} m² — un ${diff}% ${dir === 'less' ? 'menos' : 'más'} que los ${listed} m² anunciados. Pregunta al vendedor en qué superficie se basa el precio.`,
+    verdictAlert: (reg, listed, diff, dir, msg) => `Diferencia significativa: ${reg} m² registrados frente a ${listed} m² anunciados — un ${diff}% ${dir === 'smaller' ? 'menos' : 'más'}. ${msg}`,
+    verdictAlertMsgSmaller: 'Podrías estar pagando por superficie que no existe oficialmente.',
+    verdictAlertMsgLarger: 'La propiedad podría ser mayor de lo anunciado — verifica el precio por m².',
+    nonResTitle: 'Uso no residencial registrado',
+    nonResBody: (use) => `Esta propiedad está registrada oficialmente como <strong>${use}</strong>. Si pretendes usarla como vivienda, necesitarás una licencia de cambio de uso — un proceso que puede tardar 6–18 meses y costar entre 5.000 y 20.000 €.`,
+    resTitle: 'Uso residencial confirmado',
+    resBody: (use) => `Registrada como <strong>${use}</strong> — coherente con una compra residencial.`,
+    iteTitle: 'Inspección ITE probablemente obligatoria',
+    iteBody: (yr, age) => `Construida en ${yr} — ${age} años. Los edificios de más de 50 años en España requieren una Inspección Técnica de Edificios (ITE/IEE). Solicita al vendedor el último informe ITE antes de hacer una oferta.`,
+    iteApprTitle: 'Próximo a la edad de inspección',
+    iteApprBody: (yr, age, left) => `Construida en ${yr} (${age} años). La ITE será obligatoria en los próximos ${left} años. Valora los posibles costes en tu oferta.`,
+    iteOkTitle: 'Construcción relativamente reciente',
+    iteOkBody: (yr, age) => `Construida en ${yr} (${age} años). No se requiere inspección ITE obligatoria todavía.`,
+    catValTitle: 'Valor de referencia fiscal',
+    catValBody: (val, perM2) => `El valor catastral oficial es <strong>€${val}</strong> (≈ €${perM2}/m²). Es la base del IBI — habitualmente muy inferior al valor de mercado. Si el precio de venta se acerca a esta cifra, la operación puede atraer revisión fiscal adicional.`,
+    priceMultTitle: 'Precio vs valor de referencia',
+    priceMultBody: (price, mult, ctx) => `El precio de <strong>€${price}</strong> es <strong>${mult} veces el valor catastral</strong> — ${ctx}. En Mallorca e Ibiza lo habitual es entre 3 y 6 veces.`,
+    priceCtxLow: 'inusualmente bajo — puede indicar una infravaloración u obras sin declarar',
+    priceCtxNorm: 'dentro del rango habitual en Baleares',
+    priceCtxHigh: 'por encima de lo habitual — asegúrate de que la propiedad justifica la diferencia',
+    priceM2Title: 'El precio por m² depende de qué superficie se usa',
+    priceM2Body: (listedM2, priceOnListed, regM2, priceOnReg) => `Si el precio se basa en los <strong>${listedM2} m²</strong> anunciados, son €${priceOnListed}/m². Con los <strong>${regM2} m²</strong> registrados oficialmente, serían €${priceOnReg}/m². Acláralo con el vendedor antes de firmar.`,
+    leverageTitle: 'Posible margen de negociación',
+    leverageBody: (diff, listed, reg) => `La superficie oficial es un ${diff}% menor que la anunciada. Si el precio se basa en ${listed} m², podrías negociar en base a los ${reg} m² registrados oficialmente.`,
+    confHigh: (score) => `${score}% de confianza`,
+    confMatch: 'Coincidencia encontrada',
   }
 };
 
@@ -352,11 +430,9 @@ function toggleLang() {
   const btn = document.getElementById('lang-btn');
   btn.textContent = currentLang === 'en' ? 'ES' : 'EN';
 
-  // Toggle hero
   document.getElementById('hero-en').style.display = currentLang === 'en' ? '' : 'none';
   document.getElementById('hero-es').style.display = currentLang === 'es' ? '' : 'none';
 
-  // Update form labels
   const T = t[currentLang];
   const setLabel = (id, text) => { const el = document.getElementById(id); if(el) el.textContent = text; };
   const setHint  = (id, text) => { const el = document.getElementById(id); if(el) el.textContent = text; };
@@ -375,6 +451,12 @@ function toggleLang() {
   document.getElementById('btn-listing').textContent = T.btn;
   document.getElementById('muni-hint').textContent = T.muniHint;
   document.getElementById('street-hint').textContent = T.streetHint;
+  setHTML('footer-legal-text', T.footer);
+
+  // Re-render results if visible
+  if (window._lastResult) {
+    renderResults(window._lastResult.data, window._lastResult.query);
+  }
 }
 
 // ── PROVINCE LIST — Balearic Islands only (beta) ─────────────────────────────
@@ -607,6 +689,7 @@ async function searchRC() {
 
 // RENDER RESULTS — top 1 only, rich insights
 function renderResults(data, query) {
+  window._lastResult = { data, query };
   const el = document.getElementById('results');
   const candidates = data.candidates || [];
 
@@ -633,6 +716,7 @@ function renderResults(data, query) {
 }
 
 function renderCard(c, query) {
+  const T = t[currentLang];
   const cd = c.cadastralData || {};
   const ac = c.addressComponents || {};
   const listedM2 = query.m2 || null;
@@ -640,7 +724,6 @@ function renderCard(c, query) {
   const m2Diff = (regM2 && listedM2) ? ((regM2 - listedM2) / listedM2 * 100) : null;
   const age = cd.yearBuilt ? (new Date().getFullYear() - cd.yearBuilt) : null;
 
-  // ── Address line ──
   const addrParts = [
     ac.streetType && ac.streetName ? `${ac.streetType} ${ac.streetName}` : '',
     ac.number ? `nº ${ac.number}` : '',
@@ -651,184 +734,117 @@ function renderCard(c, query) {
   const addressLine = addrParts || c.address || '—';
   const locationLine = [ac.postcode, ac.municipality, ac.province].filter(Boolean).join(', ');
 
-  // ── Verdict: the single most important thing to know ──
   let verdictClass = 'ok', verdictIcon = '✓', verdictText = '';
   if (m2Diff !== null) {
-    const absDiff = Math.abs(m2Diff);
-    if (absDiff <= 3) {
-      verdictClass = 'ok';
-      verdictText = `The registered area matches the listing — ${regM2} m² officially recorded vs ${listedM2} m² advertised. No discrepancy.`;
-    } else if (absDiff <= 12) {
+    const absDiff = Math.abs(m2Diff).toFixed(1);
+    if (Math.abs(m2Diff) <= 3) {
+      verdictText = T.verdictMatch(regM2, listedM2);
+    } else if (Math.abs(m2Diff) <= 12) {
       verdictClass = 'warn'; verdictIcon = '⚠';
-      const dir = m2Diff < 0 ? 'less' : 'more';
-      verdictText = `The official record shows ${regM2} m² — ${absDiff.toFixed(1)}% ${dir} than the ${listedM2} m² advertised. Ask the seller which figure the price is based on.`;
+      verdictText = T.verdictWarn(regM2, listedM2, absDiff, m2Diff < 0 ? 'less' : 'more');
     } else {
       verdictClass = 'alert'; verdictIcon = '!';
-      const dir = m2Diff < 0 ? 'smaller' : 'larger';
-      verdictText = `Significant gap: officially ${regM2} m² vs ${listedM2} m² listed — ${Math.abs(m2Diff).toFixed(1)}% ${dir}. ${m2Diff < 0 ? 'You may be paying for space that doesn\'t officially exist.' : 'The property may be larger than advertised — verify the price per m².'}`;
+      const msg = m2Diff < 0 ? T.verdictAlertMsgSmaller : T.verdictAlertMsgLarger;
+      verdictText = T.verdictAlert(regM2, listedM2, absDiff, m2Diff < 0 ? 'smaller' : 'larger', msg);
     }
   }
 
-  // ── Insights ──
   const insights = [];
-
-  // Use check
   if (cd.use) {
-    const useIsResidential = /residential|dwelling|vivienda/i.test(cd.use);
-    const useIsCommercial = /commercial|comercial|office|industrial/i.test(cd.use);
-    if (useIsCommercial) {
-      insights.push({ cls:'warn', icon:'⚠', title:'Non-residential use registered',
-        text:`This property is officially registered as <strong>${cd.use}</strong>. If you intend to use it as a home, a change-of-use permit (licencia de cambio de uso) will be required — a process that can take 6–18 months and cost €5,000–20,000+.` });
-    } else if (useIsResidential) {
-      insights.push({ cls:'ok', icon:'✓', title:'Residential use confirmed',
-        text:`Registered as <strong>${cd.use}</strong> — consistent with a residential purchase.` });
-    }
+    const isRes = /residential|dwelling|vivienda/i.test(cd.use);
+    const isCom = /commercial|comercial|office|industrial/i.test(cd.use);
+    if (isCom) insights.push({ cls:'warn', icon:'⚠', title:T.nonResTitle, text:T.nonResBody(cd.use) });
+    else if (isRes) insights.push({ cls:'ok', icon:'✓', title:T.resTitle, text:T.resBody(cd.use) });
   }
-
-  // Age / ITE
   if (age !== null) {
-    if (age >= 50) {
-      insights.push({ cls:'warn', icon:'⚠', title:'ITE inspection likely required',
-        text:`Built in ${cd.yearBuilt} — ${age} years old. Buildings over 50 years in Spain require a Technical Building Inspection (ITE/IEE). Ask the seller for the most recent ITE report before making an offer.` });
-    } else if (age >= 30) {
-      insights.push({ cls:'warn', icon:'⚠', title:'Approaching inspection age',
-        text:`Built in ${cd.yearBuilt} (${age} years old). An ITE will be required within the next ${50 - age} years. Factor potential costs into your offer.` });
-    } else {
-      insights.push({ cls:'ok', icon:'✓', title:'Relatively recent construction',
-        text:`Built in ${cd.yearBuilt} (${age} years old). No mandatory ITE inspection required yet.` });
-    }
+    if (age >= 50) insights.push({ cls:'warn', icon:'⚠', title:T.iteTitle, text:T.iteBody(cd.yearBuilt, age) });
+    else if (age >= 30) insights.push({ cls:'warn', icon:'⚠', title:T.iteApprTitle, text:T.iteApprBody(cd.yearBuilt, age, 50-age) });
+    else insights.push({ cls:'ok', icon:'✓', title:T.iteOkTitle, text:T.iteOkBody(cd.yearBuilt, age) });
   }
-
-  // Cadastral value insight
   if (cd.cadastralValue && regM2) {
-    const catPerM2 = Math.round(cd.cadastralValue / regM2);
-    insights.push({ cls:'ok', icon:'€', title:'Tax reference value',
-      text:`The official cadastral value is <strong>€${Math.round(cd.cadastralValue).toLocaleString('es-ES')}</strong> (≈ €${catPerM2.toLocaleString('es-ES')}/m²). This is the base used for IBI property tax — typically well below market value. If the sale price is close to this figure, the transaction may attract additional tax scrutiny.` });
+    const pM2 = Math.round(cd.cadastralValue / regM2).toLocaleString('es-ES');
+    const val = Math.round(cd.cadastralValue).toLocaleString('es-ES');
+    insights.push({ cls:'ok', icon:'€', title:T.catValTitle, text:T.catValBody(val, pM2) });
   }
-
-  // Asking price analysis — only show if we can say something meaningful
   if (query.asking_price && regM2) {
-    const catValue = cd.cadastralValue;
-    if (catValue) {
-      const multiplier = (query.asking_price / catValue).toFixed(1);
-      const context = parseFloat(multiplier) < 2 ? 'unusually low — this could indicate an undervaluation or undeclared works'
-        : parseFloat(multiplier) <= 6 ? 'within the typical range for the Balearics'
-        : 'above typical — ensure the property justifies the premium';
-      insights.push({ cls:'ok', icon:'€', title:'Price vs tax reference',
-        text:`Asking <strong>€${query.asking_price.toLocaleString('es-ES')}</strong> is <strong>${multiplier}× the official cadastral value</strong> — ${context}. Multipliers of 3–6× are most common in Mallorca and Ibiza.` });
+    if (cd.cadastralValue) {
+      const mult = (query.asking_price / cd.cadastralValue).toFixed(1);
+      const ctx = parseFloat(mult) < 2 ? T.priceCtxLow : parseFloat(mult) <= 6 ? T.priceCtxNorm : T.priceCtxHigh;
+      insights.push({ cls:'ok', icon:'€', title:T.priceMultTitle, text:T.priceMultBody(query.asking_price.toLocaleString('es-ES'), mult, ctx) });
     }
     if (m2Diff !== null && Math.abs(m2Diff) > 5) {
-      const priceOnReg = Math.round(query.asking_price / regM2);
-      const priceOnListed = Math.round(query.asking_price / listedM2);
-      insights.push({ cls:'warn', icon:'⚠', title:'Price per m² depends on which area you use',
-        text:`If the price is based on the listed <strong>${listedM2} m²</strong> that's €${priceOnListed.toLocaleString('es-ES')}/m². Based on the officially registered <strong>${regM2} m²</strong> it's €${priceOnReg.toLocaleString('es-ES')}/m². Clarify with the seller before signing.` });
+      const p1 = Math.round(query.asking_price / listedM2).toLocaleString('es-ES');
+      const p2 = Math.round(query.asking_price / regM2).toLocaleString('es-ES');
+      insights.push({ cls:'warn', icon:'⚠', title:T.priceM2Title, text:T.priceM2Body(listedM2, p1, regM2, p2) });
     }
   }
-
-  // m² negotiation leverage
   if (m2Diff !== null && m2Diff < -5 && listedM2) {
-    insights.push({ cls:'ok', icon:'↓', title:'Potential negotiation leverage',
-      text:`The official area is ${Math.abs(m2Diff).toFixed(1)}% smaller than advertised. If the asking price is based on ${listedM2} m², you may be able to negotiate based on the officially registered ${regM2} m².` });
+    insights.push({ cls:'ok', icon:'↓', title:T.leverageTitle, text:T.leverageBody(Math.abs(m2Diff).toFixed(1), listedM2, regM2) });
   }
 
   const insightsHTML = insights.map(i => `
     <div class="insight-row ${i.cls}">
-      <div class="insight-header">
-        <span class="insight-icon">${i.icon}</span>
-        <span class="insight-title">${i.title}</span>
-      </div>
+      <div class="insight-header"><span class="insight-icon">${i.icon}</span><span class="insight-title">${i.title}</span></div>
       <div class="insight-body">${i.text}</div>
     </div>`).join('');
 
-  // ── Data pills ──
   const pills = [
-    { label: 'Registered m²', value: regM2 ? `${regM2} m²` : '—', highlight: m2Diff !== null && Math.abs(m2Diff) > 5 },
-    { label: 'Listed m²', value: listedM2 ? `${listedM2} m²` : '—', muted: true },
-    { label: 'Year built', value: cd.yearBuilt || '—' },
-    { label: 'Official use', value: cd.use || '—' },
-    { label: 'Cadastral value', value: cd.cadastralValue ? `€${Math.round(cd.cadastralValue).toLocaleString('es-ES')}` : '—' },
-    { label: 'Floors', value: cd.numberOfFloors || '—' },
-  ].filter(p => p.value !== '—');
+    { label: currentLang==='en'?'Registered m²':'M² registrados', value: regM2?`${regM2} m²`:'—', highlight: m2Diff!==null&&Math.abs(m2Diff)>5 },
+    { label: currentLang==='en'?'Listed m²':'M² anunciados', value: listedM2?`${listedM2} m²`:'—', muted:true },
+    { label: currentLang==='en'?'Year built':'Año construcción', value: cd.yearBuilt||'—' },
+    { label: currentLang==='en'?'Official use':'Uso oficial', value: cd.use||'—' },
+    { label: currentLang==='en'?'Cadastral value':'Valor catastral', value: cd.cadastralValue?`€${Math.round(cd.cadastralValue).toLocaleString('es-ES')}`:'—' },
+    { label: currentLang==='en'?'Floors':'Plantas', value: cd.numberOfFloors||'—' },
+  ].filter(p=>p.value!=='—');
 
-  const pillsHTML = pills.map(p => `
-    <div class="data-item">
-      <div class="data-label">${p.label}</div>
-      <div class="data-value ${p.highlight ? 'warn' : p.muted ? '' : ''}"
-           style="${p.muted ? 'color:var(--ink-muted)' : ''}">${p.value}</div>
-    </div>`).join('');
-
-  // ── Floor breakdown table ──
   const floorsHTML = c.floors && c.floors.length > 0 ? `
     <div style="margin-bottom:1.5rem;">
-      <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--ink-faint);margin-bottom:10px;">Construction breakdown</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--ink-faint);margin-bottom:10px;">${T.constructionBreakdown}</div>
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
-        <thead><tr style="border-bottom:0.5px solid var(--border);">
-          <th style="text-align:left;padding:5px 8px 5px 0;font-weight:500;color:var(--ink-muted);font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;">Use</th>
-          <th style="text-align:left;padding:5px 8px;font-weight:500;color:var(--ink-muted);font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;">Floor</th>
-          <th style="text-align:right;padding:5px 0 5px 8px;font-weight:500;color:var(--ink-muted);font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;">m²</th>
+        <thead><tr style="border-bottom:1px solid var(--border);">
+          <th style="text-align:left;padding:5px 8px 5px 0;font-weight:500;color:var(--ink-faint);font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;">${T.useCol}</th>
+          <th style="text-align:left;padding:5px 8px;font-weight:500;color:var(--ink-faint);font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;">${T.floorCol}</th>
+          <th style="text-align:right;padding:5px 0 5px 8px;font-weight:500;color:var(--ink-faint);font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;">${T.m2Col}</th>
         </tr></thead>
-        <tbody>${c.floors.map(f => `
-          <tr style="border-bottom:0.5px solid var(--border);">
-            <td style="padding:7px 8px 7px 0;color:var(--ink);">${f.use || '—'}</td>
-            <td style="padding:7px 8px;color:var(--ink-muted);">Planta ${f.floor || '—'}</td>
-            <td style="padding:7px 0 7px 8px;text-align:right;font-weight:500;color:var(--ink);">${f.m2 ? f.m2 + ' m²' : '—'}</td>
+        <tbody>${c.floors.map(f=>`
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px 8px 8px 0;color:var(--ink);font-weight:500;">${f.use||'—'}</td>
+            <td style="padding:8px;color:var(--ink-muted);">Planta ${f.floor||'—'}</td>
+            <td style="padding:8px 0 8px 8px;text-align:right;font-weight:600;color:var(--navy);font-family:'JetBrains Mono',monospace;">${f.m2?f.m2+' m²':'—'}</td>
           </tr>`).join('')}
         </tbody>
       </table>
     </div>` : '';
 
-  // ── Building photo (Catastro facade image) ──
   const photoUrl = c.rc ? `https://ovc.catastro.meh.es/OVCServWeb/OVCWcfLibres/OVCFotoFachada.svc/RecuperarFotoFachadaGet?ReferenciaCatastral=${c.rc.substring(0,14)}` : null;
 
   return `
 <div style="padding-top:2rem;border-top:1px solid var(--border);margin-top:1rem;">
-
   <div class="results-header" style="margin-bottom:1.5rem;padding-top:0;border-top:none;">
-    <div class="results-title">Property report</div>
-    <div class="results-meta">${c.matchScore ? `${c.matchScore}% match confidence` : 'Match found'}</div>
+    <div class="results-title">${T.reportTitle}</div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="results-meta">${c.matchScore ? T.confHigh(c.matchScore) : T.confMatch}</div>
+      <button class="print-btn" onclick="window.print()" style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;border:1px solid var(--border-mid);background:none;color:var(--ink-muted);cursor:pointer;border-radius:2px;white-space:nowrap;">${T.downloadPdf}</button>
+    </div>
   </div>
-
-  <!-- PHOTO + ADDRESS -->
-  <div style="display:grid;grid-template-columns:${photoUrl ? '140px 1fr' : '1fr'};gap:1.25rem;margin-bottom:1.5rem;align-items:start;">
-    ${photoUrl ? `<img src="${photoUrl}" alt="Building facade"
-      style="width:140px;height:140px;object-fit:cover;border:1px solid var(--border);border-radius:3px;"
-      onerror="this.style.display='none'">` : ''}
+  <div style="display:grid;grid-template-columns:${photoUrl?'140px 1fr':'1fr'};gap:1.25rem;margin-bottom:1.5rem;align-items:start;">
+    ${photoUrl?`<img src="${photoUrl}" alt="" style="width:140px;height:140px;object-fit:cover;border:1px solid var(--border);border-radius:3px;" onerror="this.style.display='none'">`:''}
     <div>
-      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--blue);margin-bottom:8px;">Registered address</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--blue);margin-bottom:8px;">${T.regAddress}</div>
       <div style="font-size:20px;font-weight:600;color:var(--navy);line-height:1.25;margin-bottom:5px;letter-spacing:-0.02em;">${addressLine}</div>
       <div style="font-size:13px;color:var(--ink-muted);">${locationLine}</div>
     </div>
   </div>
-
-  <!-- VERDICT -->
-  ${verdictText ? `<div class="flag-row ${verdictClass}" style="margin-bottom:1.5rem;">
-    <div class="flag-icon">${verdictIcon}</div>
-    <div class="flag-text">${verdictText}</div>
-  </div>` : ''}
-
-  <!-- DATA GRID -->
+  ${verdictText?`<div class="flag-row ${verdictClass}" style="margin-bottom:1.5rem;"><div class="flag-icon">${verdictIcon}</div><div class="flag-text">${verdictText}</div></div>`:''}
   <div style="background:var(--surface);border:1px solid var(--border);padding:1.25rem;margin-bottom:1.5rem;border-radius:3px;">
-    <div class="data-grid">${pills.map(p=>`
-      <div class="data-item">
-        <div class="data-label">${p.label}</div>
-        <div class="data-value" style="${p.muted?'color:var(--ink-muted)':p.highlight?'color:var(--amber)':''}">${p.value}</div>
-      </div>`).join('')}</div>
+    <div class="data-grid">${pills.map(p=>`<div class="data-item"><div class="data-label">${p.label}</div><div class="data-value" style="${p.muted?'color:var(--ink-muted)':p.highlight?'color:var(--amber)':''}">${p.value}</div></div>`).join('')}</div>
   </div>
-
-  <!-- FLOOR BREAKDOWN -->
   ${floorsHTML}
-
-  <!-- INSIGHTS -->
-  ${insightsHTML ? `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1.5rem;">${insightsHTML}</div>` : ''}
-
-  <!-- FOOTER: RC + disclaimer -->
+  ${insightsHTML?`<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1.5rem;">${insightsHTML}</div>`:''}
   <div style="padding-top:1rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-    <div style="font-size:11px;color:var(--ink-faint);line-height:1.7;max-width:480px;">
-      Based on official public property records. Always instruct a solicitor before exchanging contracts.
-    </div>
-    ${c.rc ? `<div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ink-faint);letter-spacing:0.5px;">${c.rc}</div>` : ''}
+    <div style="font-size:11px;color:var(--ink-faint);line-height:1.7;max-width:480px;">${T.disclaimer2}</div>
+    ${c.rc?`<div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ink-faint);letter-spacing:0.5px;">${c.rc}</div>`:''}
   </div>
-
 </div>`;
 }
 
