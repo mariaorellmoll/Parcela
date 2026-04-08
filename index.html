@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Parcela — Property Intelligence</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%231a56db'/><path d='M7 4h9a7 7 0 010 14H7V4z' stroke='white' stroke-width='2' fill='none'/><path d='M7 18v10' stroke='white' stroke-width='2' stroke-linecap='round'/><circle cx='16' cy='11' r='3' fill='white'/></svg>">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -938,9 +937,8 @@ function showError(msg) {
     </div>`;
 }
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
-// ── MAP ───────────────────────────────────────────────────────────────────────
+// ── MAP — OSM iframe approach (no Leaflet, no tiles to load) ──────────────────
 async function initMap(mapId, addressQuery) {
   const el = document.getElementById(mapId);
   if (!el) return;
@@ -950,50 +948,28 @@ async function initMap(mapId, addressQuery) {
   try {
     const query = encodeURIComponent(addressQuery + ', Spain');
     const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1&countrycodes=es`, {
-      headers: { 'Accept-Language': 'es', 'User-Agent': 'Parcela/1.0 contact@parcela.app' }
+      headers: { 'Accept-Language': 'es', 'User-Agent': 'Parcela/1.0' }
     });
-    const results = await r.json();
+    const data = await r.json();
 
-    if (!results || !results.length) {
+    if (!data || !data.length) {
       el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:var(--ink-faint);">${currentLang==='es'?'Mapa no disponible':'Map unavailable'}</div>`;
       return;
     }
 
-    const lat = parseFloat(results[0].lat);
-    const lon = parseFloat(results[0].lon);
+    const lat = parseFloat(data[0].lat);
+    const lon = parseFloat(data[0].lon);
+    const d = 0.003;
 
-    // Clear div and ensure it has explicit pixel dimensions
-    el.innerHTML = '';
-    el.style.height = '240px';
-    el.style.width = '100%';
-
-    const map = L.map(el, {
-      zoomControl: true,
-      attributionControl: true,
-      scrollWheelZoom: false,
-      dragging: true,
-    });
-
-    // Use OpenStreetMap standard tiles (most reliable, no API key)
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© OpenStreetMap'
-    }).addTo(map);
-
-    map.setView([lat, lon], 16);
-
-    // Custom blue pin
-    const icon = L.divIcon({
-      html: `<div style="width:16px;height:16px;background:#1a56db;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(26,86,219,0.5);"></div>`,
-      iconSize: [16, 16],
-      iconAnchor: [8, 8],
-      className: ''
-    });
-    L.marker([lat, lon], { icon }).addTo(map);
-
-    // Force tile redraw after a short delay (fixes blank tile issue)
-    setTimeout(() => { map.invalidateSize(); }, 200);
-    setTimeout(() => { map.invalidateSize(); }, 600);
+    // OSM embed iframe — self-contained, loads its own tiles internally
+    el.innerHTML = `<iframe
+      width="100%" height="100%"
+      frameborder="0" scrolling="no"
+      marginheight="0" marginwidth="0"
+      src="https://www.openstreetmap.org/export/embed.html?bbox=${lon-d}%2C${lat-d}%2C${lon+d}%2C${lat+d}&layer=mapnik&marker=${lat}%2C${lon}"
+      style="border:none;display:block;width:100%;height:100%;"
+      loading="lazy">
+    </iframe>`;
 
   } catch(e) {
     el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:var(--ink-faint);">${currentLang==='es'?'Mapa no disponible':'Map unavailable'}</div>`;
