@@ -863,25 +863,13 @@ function renderCard(c, query, isTop = true) {
     </div>` : '';
 
   const photoUrl = c.facadeUrl || (c.rc ? `https://ovc.catastro.meh.es/OVCServWeb/OVCWcfLibres/OVCFotoFachada.svc/RecuperarFotoFachadaGet?ReferenciaCatastral=${c.rc.substring(0,14)}` : null);
-  const croquisUrl = c.croquisUrl || null;
 
-  // Images section — facade + croquis if available
-  const imagesHTML = (photoUrl || croquisUrl) ? `
-    <div style="display:grid;grid-template-columns:${photoUrl && croquisUrl ? '1fr 1fr' : '140px 1fr'};gap:10px;margin-bottom:1.5rem;">
-      ${photoUrl ? `
-        <div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-faint);margin-bottom:5px;">${currentLang==='es'?'Fachada':'Facade'}</div>
-          <img src="${photoUrl}" alt="Facade"
-            style="width:100%;height:160px;object-fit:cover;border:1px solid var(--border);border-radius:3px;display:block;"
-            onerror="this.parentElement.style.display='none'">
-        </div>` : ''}
-      ${croquisUrl ? `
-        <div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-faint);margin-bottom:5px;">${currentLang==='es'?'Croquis catastral':'Cadastral sketch'}</div>
-          <img src="${croquisUrl}" alt="Cadastral sketch"
-            style="width:100%;height:160px;object-fit:contain;background:var(--surface);border:1px solid var(--border);border-radius:3px;display:block;"
-            onerror="this.parentElement.style.display='none'">
-        </div>` : ''}
+  const imagesHTML = photoUrl ? `
+    <div style="margin-bottom:1.5rem;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-faint);margin-bottom:5px;">${currentLang==='es'?'Fachada registrada':'Registered facade'}</div>
+      <img src="${photoUrl}" alt="Facade"
+        style="width:100%;max-height:220px;object-fit:cover;border:1px solid var(--border);border-radius:3px;display:block;"
+        onerror="this.parentElement.style.display='none'">
     </div>` : '';
 
   // ── Map ID (unique per card) ──
@@ -978,10 +966,12 @@ async function initMap(mapId, addressQuery) {
     if (!r.ok) throw new Error('geocode failed');
     const { lat, lon } = await r.json();
 
-    // Render map using browser tile requests (no CORS issue from browser)
-    el.innerHTML = renderTileMap(lat, lon, el.offsetWidth || 680, 240);
+    // Use container width or fallback to 680
+    const w = el.closest('#results')?.offsetWidth || document.body.offsetWidth || 680;
+    el.innerHTML = renderTileMap(lat, lon, Math.min(w - 48, 720), 240);
 
   } catch(e) {
+    console.error('[map] failed:', e.message);
     el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:var(--ink-faint);">${errorText}</div>`;
   }
 }
