@@ -1,10 +1,7 @@
 {
   "functions": {
-    "api/catastro.js": {
-      "maxDuration": 30
-    },
-    "api/debug.js": {
-      "maxDuration": 30
-    }
+    "api/catastro.js": { "maxDuration": 30 },
+    "api/mapimage.js": { "maxDuration": 15 },
+    "api/debug.js":    { "maxDuration": 30 }
   }
 }
