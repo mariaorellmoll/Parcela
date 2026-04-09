@@ -874,9 +874,14 @@ function renderCard(c, query, isTop = true) {
 
   // ── Map ID (unique per card) ──
   const mapId = `map-${c.rc || Math.random().toString(36).slice(2)}`;
+  // Build geocode query — use street number + name + municipality (simpler = more reliable)
+  // Nominatim works best with natural-language queries, not ALL CAPS Catastro format
+  const streetForGeo = ac.streetName ? ac.streetName.replace(/^(DEL?|DE LA|DE LOS|LOS|LAS)\s+/i, '') : '';
   const geocodeQuery = [
-    ac.streetType, ac.streetName, ac.number, ac.municipality, ac.province
-  ].filter(Boolean).join(' ');
+    streetForGeo && ac.number ? `${streetForGeo} ${ac.number}` : streetForGeo,
+    ac.municipality ? ac.municipality.charAt(0) + ac.municipality.slice(1).toLowerCase() : '',
+    'España'
+  ].filter(Boolean).join(', ');
 
   return `
 <div style="padding-top:2rem;border-top:1px solid var(--border);margin-top:1rem;">
