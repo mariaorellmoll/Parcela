@@ -951,85 +951,33 @@ function showError(msg) {
 }
 </script>
 <script>
-// ── MAP — browser-side tile rendering, coordinates from our API ───────────────
+// ── MAP — Google Maps embed, no API key needed ────────────────────────────────
 async function initMap(mapId, addressQuery) {
   const el = document.getElementById(mapId);
   if (!el) return;
 
   const loadingText = currentLang==='es' ? 'Cargando mapa…' : 'Loading map…';
   const errorText = currentLang==='es' ? 'Mapa no disponible' : 'Map unavailable';
-  el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:var(--ink-faint);font-family:'JetBrains Mono',monospace;letter-spacing:1px;">${loadingText}</div>`;
+  el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:var(--ink-faint);font-family:'JetBrains Mono',monospace;">${loadingText}</div>`;
 
   try {
-    // Get coordinates from our server-side geocoder
     const r = await fetch(`/api/mapimage?address=${encodeURIComponent(addressQuery)}`);
     if (!r.ok) throw new Error('geocode failed');
     const { lat, lon } = await r.json();
+    if (!lat || !lon) throw new Error('no coordinates');
 
-    // Use container width or fallback to 680
-    const w = el.closest('#results')?.offsetWidth || document.body.offsetWidth || 680;
-    el.innerHTML = renderTileMap(lat, lon, Math.min(w - 48, 720), 240);
+    el.innerHTML = `<iframe
+      src="https://maps.google.com/maps?q=${lat},${lon}&z=16&output=embed"
+      width="100%" height="100%"
+      style="border:none;display:block;border-radius:3px;"
+      loading="lazy"
+      referrerpolicy="no-referrer-when-downgrade">
+    </iframe>`;
 
   } catch(e) {
-    console.error('[map] failed:', e.message);
+    console.error('[map]', e.message);
     el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:var(--ink-faint);">${errorText}</div>`;
   }
-}
-
-function renderTileMap(lat, lon, width, height) {
-  const zoom = 16;
-
-  // Convert lat/lon to tile coordinates
-  const n = Math.pow(2, zoom);
-  const tileX = Math.floor((lon + 180) / 360 * n);
-  const tileY = Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * n);
-
-  // Pixel offset within the centre tile
-  const TILE = 256;
-  const exactX = (lon + 180) / 360 * n;
-  const exactY = (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * n;
-  const offX = Math.round((exactX - tileX) * TILE);
-  const offY = Math.round((exactY - tileY) * TILE);
-
-  // How many tiles we need to fill the container
-  const tilesWide = Math.ceil(width / TILE) + 2;
-  const tilesHigh = Math.ceil(height / TILE) + 2;
-  const startTX = tileX - Math.floor(tilesWide / 2);
-  const startTY = tileY - Math.floor(tilesHigh / 2);
-
-  // Centre offset so the pin is in the middle
-  const cssLeft = -(offX + Math.floor(tilesWide / 2) * TILE - width / 2);
-  const cssTop  = -(offY + Math.floor(tilesHigh / 2) * TILE - height / 2);
-
-  // Build tile grid HTML
-  let tilesHTML = '';
-  for (let dy = 0; dy < tilesHigh; dy++) {
-    for (let dx = 0; dx < tilesWide; dx++) {
-      const tx = startTX + dx;
-      const ty = startTY + dy;
-      const src = `https://tile.openstreetmap.org/${zoom}/${tx}/${ty}.png`;
-      const left = dx * TILE;
-      const top  = dy * TILE;
-      tilesHTML += `<img src="${src}" style="position:absolute;left:${left}px;top:${top}px;width:${TILE}px;height:${TILE}px;" crossorigin="anonymous" loading="lazy">`;
-    }
-  }
-
-  // Blue pin in the centre
-  const pin = `<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);z-index:10;pointer-events:none;">
-    <div style="width:14px;height:14px;background:#1a56db;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(26,86,219,0.6);"></div>
-  </div>`;
-
-  // Attribution
-  const attr = `<div style="position:absolute;bottom:4px;right:6px;font-size:9px;color:#444;background:rgba(255,255,255,0.8);padding:1px 4px;border-radius:2px;z-index:10;">© OpenStreetMap</div>`;
-
-  return `
-    <div style="position:relative;width:100%;height:${height}px;overflow:hidden;border-radius:3px;background:#f0f0f0;">
-      <div style="position:absolute;left:${cssLeft}px;top:${cssTop}px;width:${tilesWide*TILE}px;height:${tilesHigh*TILE}px;">
-        ${tilesHTML}
-      </div>
-      ${pin}
-      ${attr}
-    </div>`;
 }
 </script>
 </body>
