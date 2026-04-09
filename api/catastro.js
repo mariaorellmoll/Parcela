@@ -357,8 +357,11 @@ function parsePropertyXML(xml, rcFallback) {
     I:'Industrial',O:'Office',C:'Commercial',A:'Agricultural',
     T:'Tourism / holiday',G:'Garage',Z:'Other'};
 
+  const rc14 = rc.substring(0, 14);
   const r1=rc.substring(0,7); const r2=rc.substring(7,14);
   const catUrl=`https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCListaBienes.aspx?RC1=${r1}&RC2=${r2}&pest=rc&RCCompleta=${rc}&from=OVCBusqueda&tipoCarto=nuevo`;
+  const facadeUrl = `http://ovc.catastro.meh.es/OVCServWeb/OVCWcfLibres/OVCFotoFachada.svc/RecuperarFotoFachadaGet?ReferenciaCatastral=${rc14}`;
+  const croquisUrl = `http://ovc.catastro.meh.es/OVCServWeb/OVCWcfLibres/OVCFotoFachada.svc/RecuperarCroquisGet?ReferenciaCatastral=${rc14}`;
 
   return {
     rc, address: address||null,
@@ -369,6 +372,7 @@ function parsePropertyXML(xml, rcFallback) {
       yearBuilt:ant,cadastralValue:vv,numberOfFloors:npr},
     floors: floors.length > 0 ? floors : null,
     subUnits: subUnits.length > 0 ? subUnits : null,
+    facadeUrl, croquisUrl,
     catastroUrl:catUrl,
     source:'Catastro OVC — Ministerio de Hacienda',
   };
